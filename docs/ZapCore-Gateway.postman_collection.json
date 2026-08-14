@@ -1,0 +1,414 @@
+{
+  "info": {
+    "_postman_id": "f58953ad-52a1-4d86-a22e-8105f080e1c5",
+    "name": "ZapCore Gateway",
+    "description": "Colecao Postman para testar o ZapCore Gateway: instancias, conexao QR/PIN, mensagens, webhooks e rotas internas do worker.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{api_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "worker_url",
+      "value": "http://localhost:3333"
+    },
+    {
+      "key": "api_token",
+      "value": "dev_zapcore_token"
+    },
+    {
+      "key": "instance_uuid",
+      "value": "UUID_DA_INSTANCIA"
+    },
+    {
+      "key": "phone_number",
+      "value": "5511999999999"
+    },
+    {
+      "key": "group_jid",
+      "value": "120363000000000000@g.us"
+    },
+    {
+      "key": "newsletter_jid",
+      "value": "120363000000000000@newsletter"
+    },
+    {
+      "key": "media_url",
+      "value": "https://files.seudominio.com/imagem.jpg"
+    },
+    {
+      "key": "message_id",
+      "value": "1"
+    },
+    {
+      "key": "worker_secret",
+      "value": "change_worker_secret"
+    },
+    {
+      "key": "internal_secret",
+      "value": "change_internal_secret"
+    }
+  ],
+  "item": [
+    {
+      "name": "Instancias",
+      "item": [
+        {
+          "name": "Listar instancias",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/instances"
+          }
+        },
+        {
+          "name": "Criar instancia",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Atendimento Principal\"\n}"
+            },
+            "url": "{{base_url}}/api/instances"
+          }
+        },
+        {
+          "name": "Status da instancia",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/instances/{{instance_uuid}}/status"
+          }
+        },
+        {
+          "name": "Consultar QR Code",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/instances/{{instance_uuid}}/qr"
+          }
+        },
+        {
+          "name": "Conectar por QR Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"qr\"\n}"
+            },
+            "url": "{{base_url}}/api/instances/{{instance_uuid}}/connect"
+          }
+        },
+        {
+          "name": "Conectar por PIN Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"pin\",\n  \"phone_number\": \"{{phone_number}}\"\n}"
+            },
+            "url": "{{base_url}}/api/instances/{{instance_uuid}}/connect"
+          }
+        },
+        {
+          "name": "Desconectar instancia",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/instances/{{instance_uuid}}/disconnect"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Mensagens",
+      "item": [
+        {
+          "name": "Enviar texto - usuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"instance_uuid\": \"{{instance_uuid}}\",\n  \"chat_type\": \"user\",\n  \"to\": \"{{phone_number}}\",\n  \"text\": \"Ola, teste pelo ZapCore Gateway\"\n}"
+            },
+            "url": "{{base_url}}/api/messages/text"
+          }
+        },
+        {
+          "name": "Enviar texto - grupo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"instance_uuid\": \"{{instance_uuid}}\",\n  \"chat_type\": \"group\",\n  \"to\": \"{{group_jid}}\",\n  \"text\": \"Mensagem para grupo autorizado\"\n}"
+            },
+            "url": "{{base_url}}/api/messages/text"
+          }
+        },
+        {
+          "name": "Enviar texto - newsletter",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"instance_uuid\": \"{{instance_uuid}}\",\n  \"chat_type\": \"newsletter\",\n  \"to\": \"{{newsletter_jid}}\",\n  \"text\": \"Atualizacao para canal administrado pela conta\"\n}"
+            },
+            "url": "{{base_url}}/api/messages/text"
+          }
+        },
+        {
+          "name": "Enviar midia - usuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"instance_uuid\": \"{{instance_uuid}}\",\n  \"chat_type\": \"user\",\n  \"to\": \"{{phone_number}}\",\n  \"media_type\": \"image\",\n  \"media_url\": \"{{media_url}}\",\n  \"caption\": \"Imagem de teste\"\n}"
+            },
+            "url": "{{base_url}}/api/messages/media"
+          }
+        },
+        {
+          "name": "Enviar midia - grupo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"instance_uuid\": \"{{instance_uuid}}\",\n  \"chat_type\": \"group\",\n  \"to\": \"{{group_jid}}\",\n  \"media_type\": \"image\",\n  \"media_url\": \"{{media_url}}\",\n  \"caption\": \"Imagem para grupo autorizado\"\n}"
+            },
+            "url": "{{base_url}}/api/messages/media"
+          }
+        },
+        {
+          "name": "Enviar midia - newsletter",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"instance_uuid\": \"{{instance_uuid}}\",\n  \"chat_type\": \"newsletter\",\n  \"to\": \"{{newsletter_jid}}\",\n  \"media_type\": \"image\",\n  \"media_url\": \"{{media_url}}\",\n  \"caption\": \"Imagem para canal administrado pela conta\"\n}"
+            },
+            "url": "{{base_url}}/api/messages/media"
+          }
+        },
+        {
+          "name": "Listar mensagens - todos",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/messages?instance_uuid={{instance_uuid}}&page=1&limit=100"
+          }
+        },
+        {
+          "name": "Listar mensagens - usuarios",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/messages?instance_uuid={{instance_uuid}}&chat_type=user&page=1&limit=100"
+          }
+        },
+        {
+          "name": "Listar mensagens - grupos",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/messages?instance_uuid={{instance_uuid}}&chat_type=group&page=1&limit=100"
+          }
+        },
+        {
+          "name": "Listar mensagens - newsletters",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/messages?instance_uuid={{instance_uuid}}&chat_type=newsletter&page=1&limit=100"
+          }
+        },
+        {
+          "name": "Pesquisar mensagens",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/messages?instance_uuid={{instance_uuid}}&chat_type=user&q=pedido&page=1&limit=50"
+          }
+        },
+        {
+          "name": "Visualizar ou baixar mídia recebida",
+          "request": {
+            "method": "GET",
+            "description": "Use o message_id retornado pela listagem. A resposta é o arquivo original com Content-Type correto para imagem, figurinha, áudio, vídeo ou documento.",
+            "url": "{{base_url}}/api/messages/{{message_id}}/media"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Webhooks",
+      "item": [
+        {
+          "name": "Criar webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"instance_uuid\": \"{{instance_uuid}}\",\n  \"name\": \"Webhook Atendimento\",\n  \"url\": \"https://example.com/webhook\",\n  \"secret\": \"troque_este_secret\",\n  \"events\": [\n    \"instance.connected\",\n    \"message.received\",\n    \"message.sent\",\n    \"message.failed\"\n  ],\n  \"active\": true\n}"
+            },
+            "url": "{{base_url}}/api/webhooks"
+          }
+        },
+        {
+          "name": "Logs de webhook",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/webhook-logs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Worker Interno",
+      "item": [
+        {
+          "name": "Worker - conectar QR",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Worker-Secret",
+                "value": "{{worker_secret}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"qr\"\n}"
+            },
+            "url": "{{worker_url}}/worker/instances/{{instance_uuid}}/connect"
+          }
+        },
+        {
+          "name": "Worker - conectar PIN Code",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Worker-Secret",
+                "value": "{{worker_secret}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"pin\",\n  \"phone_number\": \"{{phone_number}}\"\n}"
+            },
+            "url": "{{worker_url}}/worker/instances/{{instance_uuid}}/connect"
+          }
+        },
+        {
+          "name": "Worker - status",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Worker-Secret",
+                "value": "{{worker_secret}}"
+              }
+            ],
+            "url": "{{worker_url}}/worker/instances/{{instance_uuid}}/status"
+          }
+        },
+        {
+          "name": "Worker - desconectar",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Worker-Secret",
+                "value": "{{worker_secret}}"
+              }
+            ],
+            "url": "{{worker_url}}/worker/instances/{{instance_uuid}}/disconnect"
+          }
+        }
+      ]
+    }
+  ]
+}

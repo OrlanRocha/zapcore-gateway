@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  php-app:
+    image: php:8.2-apache
+    container_name: zapcore_php
+    ports:
+      - "8080:80"
+    volumes:
+      - ./backend-php:/var/www/html
+      - ./php.ini:/usr/local/etc/php/php.ini
+    environment:
+      - APACHE_DOCUMENT_ROOT=/var/www/html/public
+    depends_on:
+      - mysql
+    networks:
+      - zapcore_network
+    command: >
+      bash -c "
+      apt-get update
+      && apt-get install -y libcurl4-openssl-dev
+      && sed -ri -e 's!/var/www/html!$${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
+      && sed -ri -e 's!/var/www/!$${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+      && a2enmod rewrite
+      && docker-php-ext-install pdo pdo_mysql curl
+      && apache2-foreground
+      "
+
+  mysql:
+    image: mysql:8.0
+    container_name: zapcore_mysql
+    restart: always
+    environment:
+      MYSQL_DATABASE: zapcore_gateway
+      MYSQL_USER: zapcore
+      MYSQL_PASSWORD: zapcore_pass
+      MYSQL_ROOT_PASSWORD: root_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - zapcore_db_data:/var/lib/mysql
+      - ./backend-php/database/schema.sql:/docker-entrypoint-initdb.d/1_schema.sql
+      - ./backend-php/database/seed.sql:/docker-entrypoint-initdb.d/2_seed.sql
+      - ./backend-php/database/first_login_setup.sql:/docker-entrypoint-initdb.d/3_first_login_setup.sql
+      - ./backend-php/database/chat_type_migration.sql:/docker-entrypoint-initdb.d/4_chat_type_migration.sql
+      - ./backend-php/database/performance_indexes.sql:/docker-entrypoint-initdb.d/5_performance_indexes.sql
+    networks:
+      - zapcore_network
+
+  baileys-worker:
+    build:
+      context: ./worker-baileys
+      dockerfile: Dockerfile
+    container_name: zapcore_worker
+    restart: always
+    ports:
+      - "3333:3333"
+    volumes:
+      - ./worker-baileys:/app
+      - ./backend-php/storage/media:/app/storage/media
+      - /app/node_modules
+    depends_on:
+      - mysql
+      - php-app
+    networks:
+      - zapcore_network
+    command: npm run dev
+
+  redis:
+    image: redis:7-alpine
+    container_name: zapcore_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - zapcore_network
+
+volumes:
+  zapcore_db_data:
+
+networks:
+  zapcore_network:
+    driver: bridge

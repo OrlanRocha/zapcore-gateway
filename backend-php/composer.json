@@ -1,0 +1,23 @@
+{
+    "name": "zapcore/gateway",
+    "description": "ZapCore Gateway - WhatsApp Web API",
+    "license": "proprietary",
+    "type": "project",
+    "require": {
+        "ext-curl": "*",
+        "ext-openssl": "*",
+        "ext-pdo": "*",
+        "php": "^8.2",
+        "vlucas/phpdotenv": "^5.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true
+    }
+}

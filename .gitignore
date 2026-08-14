@@ -1,0 +1,14 @@
+node_modules/
+dist/
+vendor/
+.env
+*.log
+backend-php/storage/logs/*
+!backend-php/storage/logs/.gitkeep
+backend-php/storage/cache/*
+!backend-php/storage/cache/.gitkeep
+backend-php/storage/media/*
+!backend-php/storage/media/.gitkeep
+npm-debug.log*
+yarn-debug.log*
+composer.phar
