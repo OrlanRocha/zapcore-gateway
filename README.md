@@ -27,7 +27,15 @@ Worker Node.js + Baileys
 
 - API, webhooks e rotas internas: `docs/api.md`
 - Instalacao detalhada: `docs/installation.md`
+- Versionamento e publicacoes: `docs/versioning.md`
 - Colecao Postman: `docs/ZapCore-Gateway.postman_collection.json`
+
+## Versao
+
+A versao atual fica no arquivo `VERSION` e segue Semantic Versioning. Mudancas
+destinadas a publicacao devem ser registradas em `CHANGELOG.md`. Para preparar
+uma nova versao, use o script `scripts/release.ps1`; o fluxo completo esta em
+`docs/versioning.md`.
 
 ## Instalar com Docker
 

@@ -11,6 +11,8 @@
 <?php
 $isAuthenticated = \App\Core\Auth::check();
 $usePublicShell = !empty($forcePublicLayout);
+$versionFile = $_ENV['APP_VERSION_FILE'] ?? dirname(__DIR__, 4) . '/VERSION';
+$appVersion = is_file($versionFile) ? trim((string) file_get_contents($versionFile)) : 'dev';
 ?>
 <body class="<?= $isAuthenticated && !$usePublicShell ? 'app-screen' : 'login-screen' ?>">
     <?php if ($isAuthenticated && !$usePublicShell): ?>
@@ -30,7 +32,7 @@ $usePublicShell = !empty($forcePublicLayout);
         <div class="d-flex align-items-center gap-3">
             <div class="text-end d-none d-md-block" style="line-height:1.2;">
                 <div class="fw-bold" style="font-size: 0.9rem;"><?= htmlspecialchars($authUser->name) ?></div>
-                <div class="text-muted" style="font-size: 0.75rem;"><?= htmlspecialchars($authUser->email) ?> · <?= htmlspecialchars($authUser->role) ?></div>
+                <div class="text-muted" style="font-size: 0.75rem;"><?= htmlspecialchars($authUser->email) ?> · <?= htmlspecialchars($authUser->role) ?> · v<?= htmlspecialchars($appVersion) ?></div>
             </div>
             <a href="/profile" class="btn btn-light rounded-circle shadow-sm" title="Meu perfil" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
                 <i class="fas fa-user text-dark"></i>

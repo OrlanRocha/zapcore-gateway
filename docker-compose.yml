@@ -9,8 +9,10 @@ services:
     volumes:
       - ./backend-php:/var/www/html
       - ./php.ini:/usr/local/etc/php/php.ini
+      - ./VERSION:/app-version/VERSION:ro
     environment:
       - APACHE_DOCUMENT_ROOT=/var/www/html/public
+      - APP_VERSION_FILE=/app-version/VERSION
     depends_on:
       - mysql
     networks:

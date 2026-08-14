@@ -5,13 +5,19 @@ import { SendQueueWorker } from './queues/SendQueueWorker';
 import { config } from './config';
 import { logger } from './utils/logger';
 import { internalRoutes } from './routes/internalRoutes';
+import packageJson from '../package.json';
 
 const app = express();
 app.use(express.json({ limit: '2mb' }));
 app.get('/health', async (_req, res) => {
     try {
         await pool.query('SELECT 1');
-        res.json({ success: true, status: 'ok', uptime_seconds: Math.floor(process.uptime()) });
+        res.json({
+            success: true,
+            status: 'ok',
+            version: packageJson.version,
+            uptime_seconds: Math.floor(process.uptime())
+        });
     } catch {
         res.status(503).json({ success: false, status: 'degraded' });
     }
