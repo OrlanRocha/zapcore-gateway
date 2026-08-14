@@ -140,6 +140,12 @@ class UserController extends Controller
         if ($user->role === 'admin' && (int) $user->active === 1 && $this->activeAdminCount() <= 1) {
             return $response->json(['success' => false, 'error' => 'Nao e possivel excluir o ultimo administrador ativo'], 422);
         }
+        if ($this->instanceCount($user->id) > 0) {
+            return $response->json([
+                'success' => false,
+                'error' => 'Este usuario possui instancias. Ele deve excluir as proprias instancias antes da remocao.'
+            ], 422);
+        }
 
         $user->delete();
         return $response->json(['success' => true, 'redirect' => '/users']);
@@ -183,5 +189,12 @@ class UserController extends Controller
             && (int) $user->active === 1
             && ($newRole !== 'admin' || $newActive !== 1)
             && $this->activeAdminCount() <= 1;
+    }
+
+    private function instanceCount(int $userId): int
+    {
+        $stmt = App::$app->db->prepare('SELECT COUNT(*) FROM instances WHERE user_id = :user_id');
+        $stmt->execute(['user_id' => $userId]);
+        return (int) $stmt->fetchColumn();
     }
 }

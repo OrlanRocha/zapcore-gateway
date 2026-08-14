@@ -37,6 +37,22 @@ class Database
 
     private function runCompatibilityMigrations(): void
     {
+        if ($this->tableExists('users') && $this->tableExists('instances')) {
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS instance_shares (
+                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    instance_id INT NOT NULL,
+                    user_id INT NOT NULL,
+                    permission ENUM('editor') NOT NULL DEFAULT 'editor',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY unique_instance_share (instance_id, user_id),
+                    KEY idx_instance_shares_user (user_id, instance_id),
+                    FOREIGN KEY (instance_id) REFERENCES instances(id) ON DELETE CASCADE,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+        }
+
         if (!$this->tableExists('messages')) {
             return;
         }

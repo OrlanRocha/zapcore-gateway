@@ -43,6 +43,8 @@ $router->post('/instances/{id}/disconnect', [InstanceController::class, 'disconn
 $router->post('/instances/{id}/delete', [InstanceController::class, 'destroy'], AuthMiddleware::class);
 $router->get('/instances/{id}/qr', [InstanceController::class, 'qr'], AuthMiddleware::class);
 $router->post('/instances/{id}/send-test', [InstanceController::class, 'sendTest'], AuthMiddleware::class);
+$router->post('/instances/{id}/shares', [InstanceController::class, 'share'], AuthMiddleware::class);
+$router->post('/instances/{id}/shares/revoke', [InstanceController::class, 'revokeShare'], AuthMiddleware::class);
 $router->get('/instances/{id}/messages', [MessageController::class, 'instance'], AuthMiddleware::class);
 $router->get('/messages/{id}/media', [MessageController::class, 'media'], AuthMiddleware::class);
 $router->get('/instances/{id}/chat', [MessageController::class, 'chat'], AuthMiddleware::class);

@@ -103,8 +103,9 @@ class MessageController extends Controller
 
     public function media(Request $request, Response $response, string $id)
     {
-        $stmt = App::$app->db->prepare('SELECT mm.* FROM message_media mm JOIN messages m ON m.id = mm.message_id JOIN instances i ON i.id = m.instance_id WHERE mm.message_id = :id AND i.user_id = :user_id LIMIT 1');
-        $stmt->execute(['id' => $id, 'user_id' => (int) Auth::user()->id]);
+        $stmt = App::$app->db->prepare('SELECT mm.* FROM message_media mm JOIN messages m ON m.id = mm.message_id JOIN instances i ON i.id = m.instance_id WHERE mm.message_id = :id AND (i.user_id = :owner_user_id OR EXISTS (SELECT 1 FROM instance_shares ish WHERE ish.instance_id = i.id AND ish.user_id = :shared_user_id)) LIMIT 1');
+        $userId = (int) Auth::user()->id;
+        $stmt->execute(['id' => $id, 'owner_user_id' => $userId, 'shared_user_id' => $userId]);
         $media = $stmt->fetch();
         if (!$media) { $response->setStatusCode(404); exit('Media not found'); }
         $base = realpath(__DIR__ . '/../../storage/media');

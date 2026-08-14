@@ -37,19 +37,21 @@
                     <th class="ps-3">Nome</th>
                     <th>E-mail</th>
                     <th>Perfil</th>
+                    <th>Instancias</th>
                     <th>Status</th>
                     <th class="text-end pe-3">Acoes</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($users)): ?>
-                    <tr><td colspan="5" class="text-center py-5 text-muted">Nenhum usuario encontrado.</td></tr>
+                    <tr><td colspan="6" class="text-center py-5 text-muted">Nenhum usuario encontrado.</td></tr>
                 <?php else: ?>
                     <?php foreach ($users as $row): ?>
                     <tr>
                         <td class="ps-3 fw-bold"><?= htmlspecialchars($row['name']) ?></td>
                         <td class="text-muted"><?= htmlspecialchars($row['email']) ?></td>
                         <td><span class="<?= $row['role'] === 'admin' ? 'badge-purple' : 'badge-gray' ?>"><?= htmlspecialchars($row['role']) ?></span></td>
+                        <td><span class="badge-gray"><?= (int) ($row['instance_count'] ?? 0) ?></span></td>
                         <td><?= $row['active'] ? '<span class="badge-green">Ativo</span>' : '<span class="badge-yellow">Inativo</span>' ?></td>
                         <td class="text-end pe-3">
                             <div class="d-inline-flex gap-2">

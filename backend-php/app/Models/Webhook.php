@@ -55,11 +55,15 @@ class Webhook extends Model
             FROM webhook_logs wl
             JOIN webhooks w ON w.id = wl.webhook_id
             JOIN instances i ON i.id = wl.instance_id
-            WHERE i.user_id = :user_id
+            WHERE i.user_id = :owner_user_id OR EXISTS (
+                SELECT 1 FROM instance_shares ish
+                WHERE ish.instance_id = i.id AND ish.user_id = :shared_user_id
+            )
             ORDER BY wl.id DESC
             LIMIT :limit
         ");
-        $stmt->bindValue('user_id', $userId, \PDO::PARAM_INT);
+        $stmt->bindValue('owner_user_id', $userId, \PDO::PARAM_INT);
+        $stmt->bindValue('shared_user_id', $userId, \PDO::PARAM_INT);
         $stmt->bindValue('limit', $limit, \PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll();

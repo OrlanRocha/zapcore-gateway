@@ -22,6 +22,7 @@ class Instance extends Model
     public ?string $last_connected_at;
     public ?string $last_disconnected_at;
     public int $active;
+    public string $access_role = 'owner';
 
     public function findByUuid(string $uuid)
     {
@@ -35,10 +36,53 @@ class Instance extends Model
         return null;
     }
 
+    public function findByUuidForUser(string $uuid, int $userId): ?self
+    {
+        $stmt = App::$app->db->prepare("
+            SELECT i.*,
+                   CASE WHEN i.user_id = :access_user_id THEN 'owner' ELSE 'editor' END AS access_role
+            FROM {$this->table} i
+            WHERE i.uuid = :uuid
+              AND (i.user_id = :owner_user_id OR EXISTS (
+                  SELECT 1 FROM instance_shares ish
+                  WHERE ish.instance_id = i.id AND ish.user_id = :shared_user_id
+              ))
+            LIMIT 1
+        ");
+        $stmt->execute([
+            'uuid' => $uuid,
+            'access_user_id' => $userId,
+            'owner_user_id' => $userId,
+            'shared_user_id' => $userId,
+        ]);
+        $data = $stmt->fetch();
+        if (!$data) {
+            return null;
+        }
+
+        $this->load($data);
+        return $this;
+    }
+
     public function findByIdForUser(int|string $id, int $userId): ?self
     {
-        $stmt = App::$app->db->prepare("SELECT * FROM {$this->table} WHERE id = :id AND user_id = :user_id LIMIT 1");
-        $stmt->execute(['id' => $id, 'user_id' => $userId]);
+        $stmt = App::$app->db->prepare("
+            SELECT i.*,
+                   CASE WHEN i.user_id = :access_user_id THEN 'owner' ELSE 'editor' END AS access_role
+            FROM {$this->table} i
+            WHERE i.id = :id
+              AND (i.user_id = :owner_user_id OR EXISTS (
+                  SELECT 1 FROM instance_shares ish
+                  WHERE ish.instance_id = i.id AND ish.user_id = :shared_user_id
+              ))
+            LIMIT 1
+        ");
+        $stmt->execute([
+            'id' => $id,
+            'access_user_id' => $userId,
+            'owner_user_id' => $userId,
+            'shared_user_id' => $userId,
+        ]);
         $data = $stmt->fetch();
         if (!$data) {
             return null;
@@ -102,36 +146,64 @@ class Instance extends Model
         $this->status = $status;
     }
 
-    public static function all()
+    public static function deleteForUser(int $id, int $userId): bool
+    {
+        $stmt = App::$app->db->prepare("DELETE FROM instances WHERE id = :id AND user_id = :user_id");
+        $stmt->execute(['id' => $id, 'user_id' => $userId]);
+        return $stmt->rowCount() === 1;
+    }
+
+    public static function findOwnedById(int $id, int $userId): ?self
+    {
+        $stmt = App::$app->db->prepare('SELECT * FROM instances WHERE id = :id AND user_id = :user_id LIMIT 1');
+        $stmt->execute(['id' => $id, 'user_id' => $userId]);
+        $row = $stmt->fetch();
+        if (!$row) return null;
+
+        $instance = new self();
+        $instance->load($row);
+        return $instance;
+    }
+
+    public static function shares(int $instanceId): array
     {
         $stmt = App::$app->db->prepare("
-            SELECT i.*,
-                   COALESCE(mc.app_messages_count, 0) AS app_messages_count,
-                   COALESCE(mc.app_user_count, 0) AS app_user_count,
-                   COALESCE(mc.app_group_count, 0) AS app_group_count,
-                   COALESCE(mc.app_newsletter_count, 0) AS app_newsletter_count
-            FROM instances i
-            LEFT JOIN (
-                SELECT
-                    instance_id,
-                    COUNT(*) AS app_messages_count,
-                    SUM(chat_type = 'user') AS app_user_count,
-                    SUM(chat_type = 'group') AS app_group_count,
-                    SUM(chat_type = 'newsletter') AS app_newsletter_count
-                FROM messages
-                WHERE direction = 'outbound'
-                GROUP BY instance_id
-            ) mc ON mc.instance_id = i.id
-            ORDER BY i.id DESC
+            SELECT u.id, u.name, u.email, ish.permission, ish.created_at
+            FROM instance_shares ish
+            JOIN users u ON u.id = ish.user_id
+            WHERE ish.instance_id = :instance_id
+            ORDER BY u.name, u.email
         ");
-        $stmt->execute();
+        $stmt->execute(['instance_id' => $instanceId]);
         return $stmt->fetchAll();
+    }
+
+    public static function shareWithUser(int $instanceId, int $ownerId, int $userId): bool
+    {
+        if ($ownerId === $userId || !self::findOwnedById($instanceId, $ownerId)) return false;
+
+        $stmt = App::$app->db->prepare("
+            INSERT IGNORE INTO instance_shares (instance_id, user_id, permission)
+            VALUES (:instance_id, :user_id, 'editor')
+        ");
+        $stmt->execute(['instance_id' => $instanceId, 'user_id' => $userId]);
+        return $stmt->rowCount() === 1;
+    }
+
+    public static function revokeShare(int $instanceId, int $ownerId, int $userId): bool
+    {
+        if (!self::findOwnedById($instanceId, $ownerId)) return false;
+
+        $stmt = App::$app->db->prepare('DELETE FROM instance_shares WHERE instance_id = :instance_id AND user_id = :user_id');
+        $stmt->execute(['instance_id' => $instanceId, 'user_id' => $userId]);
+        return $stmt->rowCount() === 1;
     }
 
     public static function allByUser(int $userId): array
     {
         $stmt = App::$app->db->prepare("
             SELECT i.*,
+                   CASE WHEN i.user_id = :access_user_id THEN 'owner' ELSE 'editor' END AS access_role,
                    COALESCE(mc.app_messages_count, 0) AS app_messages_count,
                    COALESCE(mc.app_user_count, 0) AS app_user_count,
                    COALESCE(mc.app_group_count, 0) AS app_group_count,
@@ -148,10 +220,17 @@ class Instance extends Model
                 WHERE direction = 'outbound'
                 GROUP BY instance_id
             ) mc ON mc.instance_id = i.id
-            WHERE i.user_id = :user_id
+            WHERE i.user_id = :owner_user_id OR EXISTS (
+                SELECT 1 FROM instance_shares ish
+                WHERE ish.instance_id = i.id AND ish.user_id = :shared_user_id
+            )
             ORDER BY i.id DESC
         ");
-        $stmt->execute(['user_id' => $userId]);
+        $stmt->execute([
+            'access_user_id' => $userId,
+            'owner_user_id' => $userId,
+            'shared_user_id' => $userId,
+        ]);
         return $stmt->fetchAll();
     }
 }

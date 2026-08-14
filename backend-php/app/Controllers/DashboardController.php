@@ -19,10 +19,13 @@ class DashboardController extends Controller
             SELECT
                 SUM(status = 'connected') AS connected_count,
                 SUM(status IN ('created', 'disconnected', 'logged_out', 'error')) AS disconnected_count
-            FROM instances
-            WHERE user_id = :user_id
+            FROM instances i
+            WHERE i.user_id = :owner_user_id OR EXISTS (
+                SELECT 1 FROM instance_shares ish
+                WHERE ish.instance_id = i.id AND ish.user_id = :shared_user_id
+            )
         ");
-        $instanceStatsStmt->execute(['user_id' => $userId]);
+        $instanceStatsStmt->execute(['owner_user_id' => $userId, 'shared_user_id' => $userId]);
         $instanceStats = $instanceStatsStmt->fetch();
 
         $messageStatsStmt = $db->prepare("
@@ -32,11 +35,14 @@ class DashboardController extends Controller
                 SUM(m.status = 'failed') AS failed_count
             FROM messages m
             JOIN instances i ON i.id = m.instance_id
-            WHERE i.user_id = :user_id
+            WHERE (i.user_id = :owner_user_id OR EXISTS (
+                SELECT 1 FROM instance_shares ish
+                WHERE ish.instance_id = i.id AND ish.user_id = :shared_user_id
+            ))
               AND m.created_at >= CURDATE()
               AND m.created_at < CURDATE() + INTERVAL 1 DAY
         ");
-        $messageStatsStmt->execute(['user_id' => $userId]);
+        $messageStatsStmt->execute(['owner_user_id' => $userId, 'shared_user_id' => $userId]);
         $messageStats = $messageStatsStmt->fetch();
 
         $messageBreakdownStmt = $db->prepare("
@@ -47,12 +53,15 @@ class DashboardController extends Controller
                 SUM(m.status = 'failed') AS failed_count
             FROM messages m
             JOIN instances i ON i.id = m.instance_id
-            WHERE i.user_id = :user_id
+            WHERE (i.user_id = :owner_user_id OR EXISTS (
+                SELECT 1 FROM instance_shares ish
+                WHERE ish.instance_id = i.id AND ish.user_id = :shared_user_id
+            ))
               AND m.created_at >= CURDATE()
               AND m.created_at < CURDATE() + INTERVAL 1 DAY
             GROUP BY COALESCE(m.chat_type, 'unknown')
         ");
-        $messageBreakdownStmt->execute(['user_id' => $userId]);
+        $messageBreakdownStmt->execute(['owner_user_id' => $userId, 'shared_user_id' => $userId]);
         $messageBreakdown = self::emptyBreakdown();
         foreach ($messageBreakdownStmt->fetchAll() as $row) {
             $type = self::normalizeChatType($row['chat_type'] ?? 'unknown');
@@ -70,12 +79,15 @@ class DashboardController extends Controller
             SELECT COUNT(*)
             FROM webhook_logs wl
             JOIN instances i ON i.id = wl.instance_id
-            WHERE i.user_id = :user_id
+            WHERE (i.user_id = :owner_user_id OR EXISTS (
+                SELECT 1 FROM instance_shares ish
+                WHERE ish.instance_id = i.id AND ish.user_id = :shared_user_id
+            ))
               AND wl.success = 0
               AND wl.created_at >= CURDATE()
               AND wl.created_at < CURDATE() + INTERVAL 1 DAY
         ");
-        $webhookErrorStmt->execute(['user_id' => $userId]);
+        $webhookErrorStmt->execute(['owner_user_id' => $userId, 'shared_user_id' => $userId]);
         $webhookErrorCount = (int) $webhookErrorStmt->fetchColumn();
 
         $view = 'dashboard/index';

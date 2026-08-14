@@ -2,6 +2,15 @@
 
 Esta documentacao cobre a API publica, as rotas internas entre PHP e worker, e o fluxo de conexao por QR Code ou PIN Code.
 
+Todos os endpoints publicos sao isolados pelo usuario vinculado ao Bearer token.
+Listagens, status, conexao, mensagens, midias e webhooks retornam apenas dados de
+instancias pertencentes a esse usuario. Um UUID de outro usuario responde como
+recurso inexistente.
+
+Instancias compartilhadas com o usuario do token tambem aparecem nas listagens e
+podem ser operadas normalmente. Compartilhar, revogar e excluir continuam sendo
+acoes exclusivas do proprietario no painel.
+
 ## Base URL
 
 Ambiente local:

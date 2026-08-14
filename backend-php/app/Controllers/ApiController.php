@@ -227,9 +227,10 @@ class ApiController extends Controller
         $limit = min(max((int) ($body['limit'] ?? 100), 1), 500);
         $page = max((int) ($body['page'] ?? 1), 1);
         $offset = ($page - 1) * $limit;
-        $params = ['user_id' => (int) $request->getAttribute('api_user_id')];
+        $apiUserId = (int) $request->getAttribute('api_user_id');
+        $params = ['owner_user_id' => $apiUserId, 'shared_user_id' => $apiUserId];
         $where = [
-            'i.user_id = :user_id',
+            '(i.user_id = :owner_user_id OR EXISTS (SELECT 1 FROM instance_shares ish WHERE ish.instance_id = i.id AND ish.user_id = :shared_user_id))',
             "COALESCE(m.raw_json, '') NOT LIKE '%\"Message absent from node\"%'"
         ];
 
@@ -504,8 +505,9 @@ class ApiController extends Controller
 
     public function media(Request $request, Response $response, string $id)
     {
-        $stmt = App::$app->db->prepare('SELECT mm.* FROM message_media mm JOIN messages m ON m.id = mm.message_id JOIN instances i ON i.id = m.instance_id WHERE mm.message_id = :id AND i.user_id = :user_id LIMIT 1');
-        $stmt->execute(['id' => $id, 'user_id' => (int) $request->getAttribute('api_user_id')]);
+        $stmt = App::$app->db->prepare('SELECT mm.* FROM message_media mm JOIN messages m ON m.id = mm.message_id JOIN instances i ON i.id = m.instance_id WHERE mm.message_id = :id AND (i.user_id = :owner_user_id OR EXISTS (SELECT 1 FROM instance_shares ish WHERE ish.instance_id = i.id AND ish.user_id = :shared_user_id)) LIMIT 1');
+        $apiUserId = (int) $request->getAttribute('api_user_id');
+        $stmt->execute(['id' => $id, 'owner_user_id' => $apiUserId, 'shared_user_id' => $apiUserId]);
         $media = $stmt->fetch();
         if (!$media) return $response->error('Media not found', 404);
         $base = realpath(__DIR__ . '/../../storage/media');
@@ -625,19 +627,10 @@ class ApiController extends Controller
 
     private function findInstanceForApi(Request $request, string $uuid): ?Instance
     {
-        $stmt = App::$app->db->prepare("SELECT * FROM instances WHERE uuid = :uuid AND user_id = :user_id LIMIT 1");
-        $stmt->execute([
-            'uuid' => $uuid,
-            'user_id' => (int) $request->getAttribute('api_user_id')
-        ]);
-        $row = $stmt->fetch();
-        if (!$row) {
-            return null;
-        }
-
-        $instance = new Instance();
-        $instance->load($row);
-        return $instance;
+        return (new Instance())->findByUuidForUser(
+            $uuid,
+            (int) $request->getAttribute('api_user_id')
+        );
     }
 
     private function callWorker(string $path, array $payload = []): array

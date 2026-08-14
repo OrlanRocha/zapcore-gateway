@@ -16,6 +16,7 @@
                     <th class="ps-3">Nome</th>
                     <th>UUID</th>
                     <th>Status</th>
+                    <th>Acesso</th>
                     <th>Mensagens App</th>
                     <th class="text-end pe-3">Acoes</th>
                 </tr>
@@ -23,7 +24,7 @@
             <tbody>
                 <?php if (empty($instances)): ?>
                 <tr>
-                    <td colspan="5" class="text-center py-5 text-muted">Nenhuma instancia encontrada. Crie uma para comecar.</td>
+                    <td colspan="6" class="text-center py-5 text-muted">Nenhuma instancia encontrada. Crie uma para comecar.</td>
                 </tr>
                 <?php else: ?>
                 <?php foreach ($instances as $instance): ?>
@@ -40,6 +41,13 @@
                         <span class="<?= $badgeClass ?>"><?= ucfirst($instance['status']) ?></span>
                     </td>
                     <td>
+                        <?php if (($instance['access_role'] ?? 'owner') === 'owner'): ?>
+                            <span class="badge-gray"><i class="fas fa-crown me-1"></i> Proprietario</span>
+                        <?php else: ?>
+                            <span class="badge-purple"><i class="fas fa-user-group me-1"></i> Compartilhada</span>
+                        <?php endif; ?>
+                    </td>
+                    <td>
                         <div class="metric-inline">
                             <span class="badge-gray"><?= (int) ($instance['app_messages_count'] ?? 0) ?> total</span>
                             <div>
@@ -52,9 +60,11 @@
                     <td class="text-end pe-3">
                         <div class="d-inline-flex gap-2">
                             <a href="/instances/<?= (int) $instance['id'] ?>" class="pill-btn btn-white btn-sm">Gerenciar</a>
-                            <button type="button" class="pill-btn btn-white btn-sm text-danger" onclick="deleteInstance(<?= (int) $instance['id'] ?>, '<?= htmlspecialchars($instance['name'], ENT_QUOTES) ?>')">
-                                <i class="fas fa-trash"></i>
-                            </button>
+                            <?php if (($instance['access_role'] ?? 'owner') === 'owner'): ?>
+                                <button type="button" class="pill-btn btn-white btn-sm text-danger" onclick="deleteInstance(<?= (int) $instance['id'] ?>, '<?= htmlspecialchars($instance['name'], ENT_QUOTES) ?>')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            <?php endif; ?>
                         </div>
                     </td>
                 </tr>

@@ -8,6 +8,7 @@ use App\Core\Response;
 use App\Core\Auth;
 use App\Models\Instance;
 use App\Models\Log;
+use App\Models\User;
 use App\Core\App;
 use App\Services\QueueService;
 use App\Services\WebhookDispatcher;
@@ -112,6 +113,8 @@ class InstanceController extends Controller
         $webhooksStmt = App::$app->db->prepare("SELECT * FROM webhooks WHERE instance_id = :id ORDER BY id DESC LIMIT 8");
         $webhooksStmt->execute(['id' => $instance->id]);
         $instanceWebhooks = $webhooksStmt->fetchAll();
+        $canManageShares = $instance->access_role === 'owner';
+        $instanceShares = $canManageShares ? Instance::shares($instance->id) : [];
 
         $view = 'instances/show';
         ob_start();
@@ -213,8 +216,7 @@ class InstanceController extends Controller
 
     public function destroy(Request $request, Response $response, string $id)
     {
-        $instanceModel = new Instance();
-        $instance = $instanceModel->findByIdForUser($id, (int) Auth::user()->id);
+        $instance = Instance::findOwnedById((int) $id, (int) Auth::user()->id);
 
         if (!$instance) {
             return $response->json(['success' => false, 'error' => 'Instance not found'], 404);
@@ -224,8 +226,9 @@ class InstanceController extends Controller
             $this->callWorker("/worker/instances/{$instance->uuid}/disconnect");
         }
 
-        $stmt = App::$app->db->prepare("DELETE FROM instances WHERE id = :id");
-        $stmt->execute(['id' => $instance->id]);
+        if (!Instance::deleteForUser($instance->id, (int) Auth::user()->id)) {
+            return $response->json(['success' => false, 'error' => 'Instance not found'], 404);
+        }
 
         return $response->json([
             'success' => true,
@@ -270,6 +273,38 @@ class InstanceController extends Controller
         } catch (\Throwable $e) {
             return $response->json(['success' => false, 'error' => $e->getMessage()], 422);
         }
+    }
+
+    public function share(Request $request, Response $response, string $id)
+    {
+        $ownerId = (int) Auth::user()->id;
+        $instance = Instance::findOwnedById((int) $id, $ownerId);
+        if (!$instance) return $response->json(['success' => false, 'error' => 'Instance not found'], 404);
+
+        $identity = trim((string) ($request->getBody()['identity'] ?? ''));
+        $matches = User::findActiveByIdentity($identity);
+        if (!$matches) return $response->json(['success' => false, 'error' => 'Usuario ativo nao encontrado'], 404);
+        if (count($matches) > 1) return $response->json(['success' => false, 'error' => 'Login ambiguo. Informe o e-mail do usuario.'], 422);
+
+        $target = $matches[0];
+        if ((int) $target['id'] === $ownerId) {
+            return $response->json(['success' => false, 'error' => 'A instancia ja pertence a este usuario'], 422);
+        }
+        if (!Instance::shareWithUser($instance->id, $ownerId, (int) $target['id'])) {
+            return $response->json(['success' => false, 'error' => 'A instancia ja esta compartilhada com este usuario'], 409);
+        }
+
+        return $response->json(['success' => true, 'user' => $target]);
+    }
+
+    public function revokeShare(Request $request, Response $response, string $id)
+    {
+        $ownerId = (int) Auth::user()->id;
+        $userId = (int) ($request->getBody()['user_id'] ?? 0);
+        if ($userId <= 0 || !Instance::revokeShare((int) $id, $ownerId, $userId)) {
+            return $response->json(['success' => false, 'error' => 'Compartilhamento nao encontrado'], 404);
+        }
+        return $response->json(['success' => true]);
     }
 
     private static function uuid(): string

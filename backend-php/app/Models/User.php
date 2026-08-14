@@ -32,7 +32,13 @@ class User extends Model
 
     public static function all(): array
     {
-        $stmt = App::$app->db->prepare("SELECT * FROM users ORDER BY id DESC");
+        $stmt = App::$app->db->prepare("
+            SELECT u.*, COUNT(i.id) AS instance_count
+            FROM users u
+            LEFT JOIN instances i ON i.user_id = u.id
+            GROUP BY u.id
+            ORDER BY u.id DESC
+        ");
         $stmt->execute();
         return $stmt->fetchAll();
     }
@@ -56,6 +62,20 @@ class User extends Model
         $stmt = App::$app->db->prepare($sql);
         $stmt->execute($params);
         return (int) $stmt->fetchColumn() > 0;
+    }
+
+    public static function findActiveByIdentity(string $identity): array
+    {
+        $identity = strtolower(trim($identity));
+        if ($identity === '') return [];
+
+        if (str_contains($identity, '@')) {
+            $stmt = App::$app->db->prepare('SELECT id, name, email FROM users WHERE active = 1 AND LOWER(email) = :identity');
+        } else {
+            $stmt = App::$app->db->prepare('SELECT id, name, email FROM users WHERE active = 1 AND LOWER(name) = :identity ORDER BY id');
+        }
+        $stmt->execute(['identity' => $identity]);
+        return $stmt->fetchAll();
     }
 
     public static function create(array $data): int

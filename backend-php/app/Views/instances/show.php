@@ -14,7 +14,10 @@ foreach (($connectionLogs ?? []) as $log) {
     </a>
     <div>
         <h2 class="m-0 fw-bold" style="letter-spacing:-1px;">Detalhes da Instancia</h2>
-        <div class="text-muted" style="font-size:0.9rem;"><?= htmlspecialchars($instance->uuid) ?></div>
+        <div class="text-muted" style="font-size:0.9rem;">
+            <?= htmlspecialchars($instance->uuid) ?>
+            <?php if (!$canManageShares): ?> · Compartilhada com voce<?php endif; ?>
+        </div>
     </div>
     <button type="button" class="pill-btn btn-black ms-auto" onclick="openInstanceChat()"><i class="fas fa-comments"></i> Abrir chat</button>
 </div>
@@ -78,9 +81,11 @@ foreach (($connectionLogs ?? []) as $log) {
                 <button class="pill-btn btn-white shadow-sm <?= $instance->status !== 'connected' ? 'd-none' : '' ?>" id="btn-disconnect" onclick="disconnectInstance()">
                     <i class="fas fa-power-off text-danger"></i> Desconectar
                 </button>
-                <button class="pill-btn btn-white shadow-sm text-danger" onclick="deleteInstance()">
-                    <i class="fas fa-trash"></i> Excluir
-                </button>
+                <?php if ($canManageShares): ?>
+                    <button class="pill-btn btn-white shadow-sm text-danger" onclick="deleteInstance()">
+                        <i class="fas fa-trash"></i> Excluir
+                    </button>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -117,6 +122,49 @@ foreach (($connectionLogs ?? []) as $log) {
         </div>
     </div>
 </div>
+
+<?php if ($canManageShares): ?>
+<div class="row g-4 mt-1">
+    <div class="col-12">
+        <div class="glass-card p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h5 class="fw-bold mb-1">Compartilhamento</h5>
+                    <div class="text-muted" style="font-size:0.85rem;">Convide um usuario ativo pelo e-mail ou nome de login.</div>
+                </div>
+                <span class="badge-gray"><?= count($instanceShares) ?> usuario(s)</span>
+            </div>
+            <form id="share-instance-form" class="d-flex gap-2 mb-3" onsubmit="shareInstance(event)">
+                <input id="share-identity" class="form-control rounded-pill border-0 shadow-sm px-4" placeholder="E-mail ou login do usuario" required>
+                <button class="pill-btn btn-black" type="submit"><i class="fas fa-user-plus"></i> Compartilhar</button>
+            </form>
+            <?php if (!$instanceShares): ?>
+                <div class="text-muted py-2">Esta instancia ainda nao foi compartilhada.</div>
+            <?php else: ?>
+                <div class="table-responsive">
+                    <table class="table custom-table table-borderless align-middle mb-0">
+                        <thead><tr><th>Usuario</th><th>E-mail</th><th>Permissao</th><th class="text-end">Acoes</th></tr></thead>
+                        <tbody>
+                        <?php foreach ($instanceShares as $sharedUser): ?>
+                            <tr>
+                                <td class="fw-bold"><?= htmlspecialchars($sharedUser['name']) ?></td>
+                                <td class="text-muted"><?= htmlspecialchars($sharedUser['email']) ?></td>
+                                <td><span class="badge-purple">Editor</span></td>
+                                <td class="text-end">
+                                    <button type="button" class="pill-btn btn-white btn-sm text-danger" onclick="revokeInstanceShare(<?= (int) $sharedUser['id'] ?>, '<?= htmlspecialchars($sharedUser['name'], ENT_QUOTES) ?>')">
+                                        <i class="fas fa-user-minus"></i> Revogar
+                                    </button>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <div class="row g-4 mt-1">
     <?php
@@ -554,6 +602,49 @@ function deleteInstance() {
                 }
             })
             .catch(() => Swal.fire('Erro', 'Erro de conexao ao excluir.', 'error'));
+    });
+}
+
+function shareInstance(event) {
+    event.preventDefault();
+    const identity = document.getElementById('share-identity').value.trim();
+    if (!identity) return;
+
+    fetch(`/instances/${instanceId}/shares`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identity })
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success) throw new Error(data.error || 'Nao foi possivel compartilhar.');
+            Swal.fire('Compartilhada', `A instancia foi compartilhada com ${data.user.name}.`, 'success')
+                .then(() => window.location.reload());
+        })
+        .catch(error => Swal.fire('Erro', error.message, 'error'));
+}
+
+function revokeInstanceShare(userId, name) {
+    Swal.fire({
+        title: 'Revogar acesso?',
+        text: `${name} deixara de acessar esta instancia.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Revogar',
+        cancelButtonText: 'Cancelar'
+    }).then(result => {
+        if (!result.isConfirmed) return;
+        fetch(`/instances/${instanceId}/shares/revoke`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId })
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) throw new Error(data.error || 'Nao foi possivel revogar.');
+                window.location.reload();
+            })
+            .catch(error => Swal.fire('Erro', error.message, 'error'));
     });
 }
 </script>
