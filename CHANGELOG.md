@@ -5,6 +5,7 @@ O formato segue Keep a Changelog e o projeto usa Versionamento Semantico.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-08-20
 ### Security
 
 - Politica de seguranca de mensageria com cadencia por instancia, cooldown por destinatario, deduplicacao e cotas configuraveis.

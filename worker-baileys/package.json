@@ -1,6 +1,6 @@
 {
   "name": "zapcore-worker",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "ZapCore Gateway Baileys Worker",
   "main": "dist/index.js",
   "scripts": {
