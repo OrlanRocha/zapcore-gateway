@@ -9,6 +9,11 @@ export class SendQueueWorker {
     private static readonly activePollMs = 1000;
     private static readonly batchSize = 25;
     private static readonly processingTimeoutMinutes = 2;
+    private static readonly minimumSendIntervalMs = Math.max(
+        1000,
+        Number.isFinite(Number(process.env.MESSAGE_MIN_INTERVAL_MS)) ? Number(process.env.MESSAGE_MIN_INTERVAL_MS) : 5000
+    );
+    private static readonly lastSendAt = new Map<number, number>();
     private static timer: NodeJS.Timeout | null = null;
 
     public static start() {
@@ -76,8 +81,11 @@ export class SendQueueWorker {
             }
 
             const payload = typeof item.payload_json === 'string' ? JSON.parse(item.payload_json) : item.payload_json;
-            
+
+            await this.assertRecipientConsent(item.instance_id, item.to_jid);
+            await this.enforceInstancePacing(item.instance_id);
             const sentMsg = await sock.sendMessage(item.to_jid, payload);
+            this.lastSendAt.set(item.instance_id, Date.now());
 
             const waMsgId = sentMsg?.key?.id || `unknown_${Date.now()}`;
             await pool.query("UPDATE send_queue SET status = 'sent', processed_at = NOW() WHERE id = ?", [item.id]);
@@ -147,13 +155,42 @@ export class SendQueueWorker {
         return new Date(Date.now() + delayMs);
     }
 
+    private static async enforceInstancePacing(instanceId: number) {
+        const lastSentAt = this.lastSendAt.get(instanceId) || 0;
+        const waitMs = this.minimumSendIntervalMs - (Date.now() - lastSentAt);
+        if (waitMs > 0) {
+            await new Promise(resolve => setTimeout(resolve, waitMs));
+        }
+    }
+
+    private static async assertRecipientConsent(instanceId: number, toJid: string) {
+        const requireOptIn = String(process.env.MESSAGE_REQUIRE_OPT_IN || 'true').toLowerCase() !== 'false';
+        if (!requireOptIn || (!toJid.endsWith('@s.whatsapp.net') && !toJid.endsWith('@c.us'))) {
+            return;
+        }
+
+        const [rows]: any = await pool.query(`
+            SELECT status
+            FROM recipient_consents
+            WHERE instance_id = ? AND jid = ?
+            LIMIT 1
+        `, [instanceId, toJid]);
+
+        if (!rows[0] || rows[0].status !== 'opted_in') {
+            const error: any = new Error('Recipient has no active opt-in');
+            error.code = 'CONSENT_REQUIRED';
+            throw error;
+        }
+    }
+
     private static isPermanentFailure(error: any): boolean {
-        const status = Number(error?.response?.status || 0);
+        if (error?.code === 'CONSENT_REQUIRED') return true;
+        const status = Number(error?.response?.status || error?.output?.statusCode || 0);
         return status >= 400 && status < 500 && status !== 408 && status !== 429;
     }
 
     private static humanErrorMessage(error: any): string {
-        const status = Number(error?.response?.status || 0);
+        const status = Number(error?.response?.status || error?.output?.statusCode || 0);
         const url = error?.config?.url;
         if (status > 0) {
             return `Remote media request failed with HTTP ${status}${url ? ` (${url})` : ''}`;

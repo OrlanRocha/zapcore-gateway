@@ -138,6 +138,7 @@ CREATE TABLE IF NOT EXISTS messages (
     KEY idx_messages_direction_created (direction, created_at),
     KEY idx_messages_instance_from_jid (instance_id, from_jid),
     KEY idx_messages_instance_to_jid (instance_id, to_jid),
+    KEY idx_messages_instance_to_created (instance_id, to_jid, created_at),
     FULLTEXT KEY ft_messages_body (body),
     FOREIGN KEY (instance_id) REFERENCES instances(id) ON DELETE CASCADE,
     FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE SET NULL
@@ -170,9 +171,28 @@ CREATE TABLE IF NOT EXISTS send_queue (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     KEY idx_send_queue_status_schedule_created (status, scheduled_at, created_at),
     KEY idx_send_queue_instance_status (instance_id, status),
+    KEY idx_send_queue_instance_recipient_created (instance_id, to_jid, created_at),
     KEY idx_send_queue_message (message_id),
     FOREIGN KEY (instance_id) REFERENCES instances(id) ON DELETE CASCADE,
     FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS recipient_consents (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    instance_id INT NOT NULL,
+    jid VARCHAR(100) NOT NULL,
+    status ENUM('opted_in', 'opted_out') NOT NULL,
+    source VARCHAR(50) NOT NULL,
+    note VARCHAR(500) NULL,
+    granted_by_user_id INT NULL,
+    consented_at TIMESTAMP NULL,
+    revoked_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_recipient_consent (instance_id, jid),
+    KEY idx_recipient_consents_instance_status (instance_id, status, updated_at),
+    FOREIGN KEY (instance_id) REFERENCES instances(id) ON DELETE CASCADE,
+    FOREIGN KEY (granted_by_user_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS webhooks (

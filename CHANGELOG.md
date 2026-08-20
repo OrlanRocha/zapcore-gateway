@@ -5,6 +5,12 @@ O formato segue Keep a Changelog e o projeto usa Versionamento Semantico.
 
 ## [Unreleased]
 
+### Security
+
+- Politica de seguranca de mensageria com cadencia por instancia, cooldown por destinatario, deduplicacao e cotas configuraveis.
+- Segunda barreira de intervalo entre envios no worker Baileys para evitar rajadas de filas antigas.
+- Registro de consentimento por contato, opt-out por palavra-chave e cancelamento imediato de envios pendentes.
+
 ### Added
 
 - Suporte a instalacao como PWA, com manifesto, service worker e pagina offline.

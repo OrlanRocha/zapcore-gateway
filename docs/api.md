@@ -153,6 +153,7 @@ Content-Type: application/json
 ```
 
 O backend converte `to` para `5511999999999@s.whatsapp.net`, cria `messages`, cria `send_queue` e o worker envia pelo Baileys.
+A resposta inclui `scheduled_at` quando a politica de seguranca reservar um horario futuro. Limites excedidos ou duplicatas recentes retornam erro sem criar a mensagem.
 
 Tipos aceitos em `chat_type`:
 
@@ -183,6 +184,41 @@ Exemplo para newsletter:
 ```
 
 Envio para grupos depende da conta estar no grupo. Envio para newsletter/canal depende do suporte do Baileys e das permissoes da conta conectada.
+
+### Consentimento de destinatarios
+
+Com `MESSAGE_REQUIRE_OPT_IN=true`, mensagens individuais exigem consentimento ativo.
+Somente o proprietario da instancia pode consultar ou alterar esses registros.
+
+```http
+GET /api/consents?instance_uuid=UUID_DA_INSTANCIA
+```
+
+```http
+POST /api/consents
+Content-Type: application/json
+
+{
+  "instance_uuid": "UUID_DA_INSTANCIA",
+  "to": "5511999999999",
+  "source": "formulario_site",
+  "note": "Aceite registrado no formulario de contato"
+}
+```
+
+```http
+POST /api/consents/revoke
+Content-Type: application/json
+
+{
+  "instance_uuid": "UUID_DA_INSTANCIA",
+  "to": "5511999999999",
+  "source": "solicitacao_cliente"
+}
+```
+
+O opt-out tambem e aplicado automaticamente quando o contato envia uma das
+palavras configuradas pelo sistema. A revogacao cancela mensagens ainda pendentes.
 
 ### Enviar midia
 
@@ -264,6 +300,8 @@ Eventos suportados:
 - `instance.disconnected`
 - `instance.logged_out`
 - `message.received`
+- `recipient.opted_in`
+- `recipient.opted_out`
 - `message.sent`
 - `message.delivered`
 - `message.read`
