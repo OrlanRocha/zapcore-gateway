@@ -151,6 +151,22 @@ DB_PASSWORD=zapcore_pass
 
 Use o mesmo `APP_KEY` no backend e no worker para criptografar e ler o estado Baileys em `baileys_auth`.
 
+## PWA e compartilhamento social
+
+A pagina de login pode instalar o painel como PWA em navegadores compativeis. O
+manifesto, os icones, a pagina offline e o service worker ficam em
+`backend-php/public`.
+
+Em producao, defina `APP_URL` com a URL publica HTTPS, sem barra no final. Esse
+valor e usado nas URLs canonicas e nas imagens Open Graph/Twitter Card:
+
+```env
+APP_URL=https://gateway.seudominio.com
+```
+
+O PWA funciona em `localhost` durante o desenvolvimento. Fora dele, o navegador
+exige HTTPS para registrar o service worker e oferecer a instalacao.
+
 ## Acesso inicial
 
 - Email: `admin@zapcore.local`

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">ZapCore Gateway</title>
+  <rect width="512" height="512" rx="120" fill="#111827"/>
+  <path d="M128 156h176l-146 200h226" fill="none" stroke="#9dffb0" stroke-width="58" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="382" cy="156" r="31" fill="#ffea75"/>
+</svg>

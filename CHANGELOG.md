@@ -5,6 +5,12 @@ O formato segue Keep a Changelog e o projeto usa Versionamento Semantico.
 
 ## [Unreleased]
 
+### Added
+
+- Suporte a instalacao como PWA, com manifesto, service worker e pagina offline.
+- Icones para navegador, Android, iOS e imagem de compartilhamento social.
+- Metadados SEO, Open Graph e Twitter Card na pagina de login.
+
 ### Changed
 
 - A propriedade das instancias agora e aplicada de forma centralizada no modelo,

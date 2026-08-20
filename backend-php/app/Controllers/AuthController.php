@@ -22,6 +22,8 @@ class AuthController extends Controller
         
         // Pass $view directly to layout
         $view = 'auth/login';
+        $pageTitle = 'Entrar | ZapCore Gateway';
+        $pageDescription = 'Acesse o ZapCore Gateway para gerenciar instancias WhatsApp, mensagens, filas e webhooks.';
         ob_start();
         include __DIR__ . '/../Views/layouts/app.php';
         return ob_get_clean();
@@ -50,6 +52,8 @@ class AuthController extends Controller
 
         $error = "Credenciais invalidas";
         $view = 'auth/login';
+        $pageTitle = 'Entrar | ZapCore Gateway';
+        $pageDescription = 'Acesse o ZapCore Gateway para gerenciar instancias WhatsApp, mensagens, filas e webhooks.';
         ob_start();
         include __DIR__ . '/../Views/layouts/app.php';
         return ob_get_clean();

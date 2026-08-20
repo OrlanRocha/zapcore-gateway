@@ -7,7 +7,7 @@
 
     <div class="login-panel">
         <div class="login-copy">
-            <div class="login-mark">zc.</div>
+            <div class="login-mark"><img src="/images/zapcore-icon.svg" alt="" width="72" height="72"></div>
             <h1>ZapCore Gateway</h1>
             <p>Gerencie instancias, filas e webhooks em um painel direto e seguro.</p>
             <div class="login-status-strip" aria-label="Status do sistema">
@@ -40,6 +40,10 @@
                 </div>
                 <button type="submit" class="pill-btn btn-black w-100 py-3 mt-2 shadow-sm">
                     Entrar <i class="fas fa-arrow-right ms-2"></i>
+                </button>
+                <button type="button" class="pwa-install-btn w-100 mt-3" data-pwa-install hidden>
+                    <i class="fas fa-arrow-down-to-line" aria-hidden="true"></i>
+                    Instalar aplicativo
                 </button>
             </form>
         </div>
