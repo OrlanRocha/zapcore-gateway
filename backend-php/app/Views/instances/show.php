@@ -166,6 +166,53 @@ foreach (($connectionLogs ?? []) as $log) {
 </div>
 <?php endif; ?>
 
+<?php if ($canManageShares): ?>
+<div class="row g-4 mt-1">
+    <div class="col-12">
+        <div class="glass-card p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h5 class="fw-bold mb-1">Consentimento de destinatarios</h5>
+                    <div class="text-muted" style="font-size:0.85rem;">Envios individuais exigem autorizacao ativa do contato.</div>
+                </div>
+                <span class="badge-gray"><?= count($recipientConsents) ?> contato(s)</span>
+            </div>
+            <form id="consent-form" class="row g-2 mb-3" onsubmit="grantRecipientConsent(event)">
+                <div class="col-md-4"><input id="consent-to" class="form-control rounded-pill border-0 shadow-sm px-4" placeholder="Numero com DDI e DDD" required></div>
+                <div class="col-md-5"><input id="consent-note" class="form-control rounded-pill border-0 shadow-sm px-4" placeholder="Origem ou observacao do consentimento" required></div>
+                <div class="col-md-3"><button class="pill-btn btn-black w-100" type="submit"><i class="fas fa-user-check"></i> Autorizar</button></div>
+            </form>
+            <?php if (!$recipientConsents): ?>
+                <div class="text-muted py-2">Nenhum consentimento registrado nesta instancia.</div>
+            <?php else: ?>
+                <div class="table-responsive">
+                    <table class="table custom-table table-borderless align-middle mb-0">
+                        <thead><tr><th>Contato</th><th>Status</th><th>Origem</th><th>Atualizado</th><th class="text-end">Acoes</th></tr></thead>
+                        <tbody>
+                        <?php foreach ($recipientConsents as $consent): ?>
+                            <tr>
+                                <td class="fw-bold"><?= htmlspecialchars($consent['jid']) ?></td>
+                                <td><?= $consent['status'] === 'opted_in' ? '<span class="badge-green">Autorizado</span>' : '<span class="badge-purple">Revogado</span>' ?></td>
+                                <td class="text-muted"><?= htmlspecialchars($consent['source']) ?></td>
+                                <td class="text-muted" style="font-size:0.82rem;"><?= date('d/m/Y H:i', strtotime($consent['updated_at'])) ?></td>
+                                <td class="text-end">
+                                    <?php if ($consent['status'] === 'opted_in'): ?>
+                                        <button type="button" class="pill-btn btn-white btn-sm text-danger" onclick="revokeRecipientConsent('<?= htmlspecialchars($consent['jid'], ENT_QUOTES) ?>')"><i class="fas fa-user-xmark"></i> Revogar</button>
+                                    <?php else: ?>
+                                        <button type="button" class="pill-btn btn-white btn-sm" onclick="prefillRecipientConsent('<?= htmlspecialchars($consent['jid'], ENT_QUOTES) ?>')"><i class="fas fa-rotate-left"></i> Reautorizar</button>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <div class="row g-4 mt-1">
     <?php
     $typeLabels = [
@@ -352,6 +399,34 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 function openInstanceChat() { instanceChat.show(); loadChatContacts(); startChatRefresh(); }
+
+function grantRecipientConsent(event) {
+    event.preventDefault();
+    const to = document.getElementById('consent-to').value.trim();
+    const note = document.getElementById('consent-note').value.trim();
+    fetch(`/instances/${instanceId}/consents`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({to, note})})
+        .then(r => r.json()).then(data => {
+            if (!data.success) return Swal.fire('Erro', data.error || 'Nao foi possivel registrar o consentimento', 'error');
+            Swal.fire({icon:'success', title:'Contato autorizado', text:data.jid, timer:1400, showConfirmButton:false}).then(() => location.reload());
+        });
+}
+
+function revokeRecipientConsent(jid) {
+    Swal.fire({title:'Revogar consentimento?', text:'Envios pendentes para este contato serao cancelados.', icon:'warning', showCancelButton:true, confirmButtonText:'Revogar', cancelButtonText:'Cancelar'})
+        .then(result => {
+            if (!result.isConfirmed) return;
+            fetch(`/instances/${instanceId}/consents/revoke`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({to:jid})})
+                .then(r => r.json()).then(data => {
+                    if (!data.success) return Swal.fire('Erro', data.error || 'Nao foi possivel revogar', 'error');
+                    location.reload();
+                });
+        });
+}
+
+function prefillRecipientConsent(jid) {
+    document.getElementById('consent-to').value = jid;
+    document.getElementById('consent-note').focus();
+}
 function startChatRefresh() { if (chatRefreshInterval) clearInterval(chatRefreshInterval); chatRefreshInterval = setInterval(() => { loadChatContacts(); loadInstanceChat(); }, 4000); }
 function stopChatRefresh() { if (chatRefreshInterval) { clearInterval(chatRefreshInterval); chatRefreshInterval = null; } }
 function setChatTab(type, button) { document.querySelectorAll('.chat-tab').forEach(item => item.classList.remove('active')); button.classList.add('active'); document.getElementById('chat-filter').value = type; if (['user', 'group', 'newsletter'].includes(type)) document.getElementById('chat-type').value = type; document.getElementById('chat-selected-jid').value = ''; document.getElementById('chat-to').value = ''; document.getElementById('chat-conversation-header').innerHTML = '<div><strong>Selecione uma conversa</strong><small>para ver o historico</small></div>'; document.getElementById('chat-messages').innerHTML = '<div class="text-center text-muted py-5">Selecione uma conversa para ver o historico.</div>'; loadChatContacts(); }

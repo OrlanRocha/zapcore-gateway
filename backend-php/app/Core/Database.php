@@ -51,6 +51,26 @@ class Database
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             ");
+
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS recipient_consents (
+                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    instance_id INT NOT NULL,
+                    jid VARCHAR(100) NOT NULL,
+                    status ENUM('opted_in', 'opted_out') NOT NULL,
+                    source VARCHAR(50) NOT NULL,
+                    note VARCHAR(500) NULL,
+                    granted_by_user_id INT NULL,
+                    consented_at TIMESTAMP NULL,
+                    revoked_at TIMESTAMP NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    UNIQUE KEY unique_recipient_consent (instance_id, jid),
+                    KEY idx_recipient_consents_instance_status (instance_id, status, updated_at),
+                    FOREIGN KEY (instance_id) REFERENCES instances(id) ON DELETE CASCADE,
+                    FOREIGN KEY (granted_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
         }
 
         if (!$this->tableExists('messages')) {
@@ -120,6 +140,18 @@ class Database
             'idx_messages_chat_type_created',
             'ALTER TABLE messages ADD INDEX idx_messages_chat_type_created (chat_type, created_at)'
         );
+        $this->addIndexIfMissing(
+            'messages',
+            'idx_messages_instance_to_created',
+            'ALTER TABLE messages ADD INDEX idx_messages_instance_to_created (instance_id, to_jid, created_at)'
+        );
+        if ($this->tableExists('send_queue')) {
+            $this->addIndexIfMissing(
+                'send_queue',
+                'idx_send_queue_instance_recipient_created',
+                'ALTER TABLE send_queue ADD INDEX idx_send_queue_instance_recipient_created (instance_id, to_jid, created_at)'
+            );
+        }
     }
 
     private function tableExists(string $table): bool

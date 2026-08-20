@@ -72,8 +72,12 @@ class QueueService
         $fromJid = $instance->phone_number ? $instance->phone_number . '@s.whatsapp.net' : '';
         $pdo = App::$app->db->pdo;
 
+        MessagingSafetyService::assertConsent($instance, $toJid, $chatType);
+
         try {
             $pdo->beginTransaction();
+
+            $scheduledAt = MessagingSafetyService::plan($instance, $toJid, $body);
 
             $messageModel = new Message();
             $message = $messageModel->create([
@@ -94,7 +98,8 @@ class QueueService
                 'instance_id' => $instance->id,
                 'message_id' => $message->id,
                 'to_jid' => $toJid,
-                'payload_json' => json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+                'payload_json' => json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                'scheduled_at' => $scheduledAt,
             ]);
 
             App::$app->db->prepare("UPDATE messages SET status = 'queued' WHERE id = :id")
@@ -103,7 +108,13 @@ class QueueService
 
             $pdo->commit();
 
-            return ['message' => $message, 'queue' => $queue, 'to_jid' => $toJid, 'chat_type' => $chatType];
+            return [
+                'message' => $message,
+                'queue' => $queue,
+                'to_jid' => $toJid,
+                'chat_type' => $chatType,
+                'scheduled_at' => $scheduledAt,
+            ];
         } catch (\Throwable $e) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();

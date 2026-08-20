@@ -9,6 +9,7 @@ use App\Core\Response;
 use App\Models\Instance;
 use App\Models\Log;
 use App\Models\Message;
+use App\Models\RecipientConsent;
 use App\Models\Webhook;
 use App\Services\JidService;
 use App\Services\QueueService;
@@ -174,7 +175,8 @@ class ApiController extends Controller
                 'message_id' => $queued['message']->id,
                 'queue_id' => $queued['queue']->id,
                 'to_jid' => $queued['to_jid'],
-                'chat_type' => $queued['chat_type']
+                'chat_type' => $queued['chat_type'],
+                'scheduled_at' => $queued['scheduled_at']
             ], 'Message queued for sending', 201);
         } catch (\InvalidArgumentException $e) {
             return $response->error($e->getMessage(), 422);
@@ -212,12 +214,54 @@ class ApiController extends Controller
                 'message_id' => $queued['message']->id,
                 'queue_id' => $queued['queue']->id,
                 'to_jid' => $queued['to_jid'],
-                'chat_type' => $queued['chat_type']
+                'chat_type' => $queued['chat_type'],
+                'scheduled_at' => $queued['scheduled_at']
             ], 'Media message queued for sending', 201);
         } catch (\InvalidArgumentException $e) {
             return $response->error($e->getMessage(), 422);
         } catch (\RuntimeException $e) {
             return $response->error($e->getMessage(), 409);
+        }
+    }
+
+    public function listConsents(Request $request, Response $response)
+    {
+        $instance = $this->findInstanceForApi($request, (string) ($_GET['instance_uuid'] ?? ''));
+        if (!$instance) return $response->error('Instance not found', 404);
+        if ($instance->access_role !== 'owner') return $response->error('Only the instance owner can manage consent', 403);
+
+        return $response->success(['consents' => RecipientConsent::listForInstance($instance->id, 500)]);
+    }
+
+    public function grantConsent(Request $request, Response $response)
+    {
+        $body = $request->getBody();
+        $instance = $this->findInstanceForApi($request, (string) ($body['instance_uuid'] ?? ''));
+        if (!$instance) return $response->error('Instance not found', 404);
+        if ($instance->access_role !== 'owner') return $response->error('Only the instance owner can manage consent', 403);
+
+        try {
+            $jid = JidService::normalize((string) ($body['to'] ?? ''), 'user')['jid'];
+            RecipientConsent::grant($instance->id, $jid, (string) ($body['source'] ?? 'api'), (int) $request->getAttribute('api_user_id'), $body['note'] ?? null);
+            return $response->success(['jid' => $jid, 'status' => 'opted_in'], 'Consent registered', 201);
+        } catch (\InvalidArgumentException $e) {
+            return $response->error($e->getMessage(), 422);
+        }
+    }
+
+    public function revokeConsent(Request $request, Response $response)
+    {
+        $body = $request->getBody();
+        $instance = $this->findInstanceForApi($request, (string) ($body['instance_uuid'] ?? ''));
+        if (!$instance) return $response->error('Instance not found', 404);
+        if ($instance->access_role !== 'owner') return $response->error('Only the instance owner can manage consent', 403);
+
+        try {
+            $jid = JidService::normalize((string) ($body['to'] ?? ''), 'user')['jid'];
+            RecipientConsent::revoke($instance->id, $jid, (string) ($body['source'] ?? 'api'), $body['note'] ?? null);
+            return $response->success(['jid' => $jid, 'status' => 'opted_out'], 'Consent revoked');
+        } catch (\InvalidArgumentException $e) {
+            return $response->error($e->getMessage(), 422);
         }
     }
 
@@ -434,10 +478,25 @@ class ApiController extends Controller
         $existingMessage = Message::findByWhatsappId($instance->id, $waId);
         $type = self::extractMessageType($message);
         $text = self::extractMessageBody($message, $type);
+        $consentChoice = null;
+        if (empty($key['fromMe']) && $text !== '') {
+            $consentJid = (string) ($key['senderPn'] ?? $key['remoteJid'] ?? '');
+            if (JidService::detectChatType((string) ($key['remoteJid'] ?? '')) === 'user' && $consentJid !== '' && !str_ends_with($consentJid, '@lid')) {
+                try {
+                    $consentJid = JidService::normalize($consentJid, 'user')['jid'];
+                    $consentChoice = RecipientConsent::processInboundChoice($instance->id, $consentJid, $text);
+                } catch (\InvalidArgumentException) {
+                    $consentChoice = null;
+                }
+            }
+        }
         if ($existingMessage) {
             self::refreshStoredMessage($existingMessage, $message, $type, $text);
             if (is_array($body['media'] ?? null)) {
                 self::attachMessageMedia((int) $existingMessage['id'], $body['media']);
+            }
+            if ($consentChoice) {
+                WebhookDispatcher::dispatch($instance, 'recipient.' . $consentChoice, ['jid' => $consentJid, 'status' => $consentChoice]);
             }
             return $response->success(['message_id' => (int) $existingMessage['id']], 'Message already stored');
         }
@@ -499,6 +558,10 @@ class ApiController extends Controller
                 'file_size' => $body['media']['file_size'] ?? null
             ] : null
         ]);
+
+        if ($consentChoice) {
+            WebhookDispatcher::dispatch($instance, 'recipient.' . $consentChoice, ['jid' => $consentJid, 'status' => $consentChoice]);
+        }
 
         return $response->success(['message_id' => $stored->id]);
     }

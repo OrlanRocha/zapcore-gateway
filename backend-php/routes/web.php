@@ -45,6 +45,8 @@ $router->get('/instances/{id}/qr', [InstanceController::class, 'qr'], AuthMiddle
 $router->post('/instances/{id}/send-test', [InstanceController::class, 'sendTest'], AuthMiddleware::class);
 $router->post('/instances/{id}/shares', [InstanceController::class, 'share'], AuthMiddleware::class);
 $router->post('/instances/{id}/shares/revoke', [InstanceController::class, 'revokeShare'], AuthMiddleware::class);
+$router->post('/instances/{id}/consents', [InstanceController::class, 'grantConsent'], AuthMiddleware::class);
+$router->post('/instances/{id}/consents/revoke', [InstanceController::class, 'revokeConsent'], AuthMiddleware::class);
 $router->get('/instances/{id}/messages', [MessageController::class, 'instance'], AuthMiddleware::class);
 $router->get('/messages/{id}/media', [MessageController::class, 'media'], AuthMiddleware::class);
 $router->get('/instances/{id}/chat', [MessageController::class, 'chat'], AuthMiddleware::class);

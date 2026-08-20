@@ -18,6 +18,9 @@ $router->post('/api/messages/text', [ApiController::class, 'sendText'], ApiToken
 $router->post('/api/messages/media', [ApiController::class, 'sendMedia'], ApiTokenMiddleware::class);
 $router->get('/api/messages', [ApiController::class, 'listMessages'], ApiTokenMiddleware::class);
 $router->get('/api/messages/{id}/media', [ApiController::class, 'media'], ApiTokenMiddleware::class);
+$router->get('/api/consents', [ApiController::class, 'listConsents'], ApiTokenMiddleware::class);
+$router->post('/api/consents', [ApiController::class, 'grantConsent'], ApiTokenMiddleware::class);
+$router->post('/api/consents/revoke', [ApiController::class, 'revokeConsent'], ApiTokenMiddleware::class);
 
 $router->post('/api/webhooks', [ApiController::class, 'createWebhook'], ApiTokenMiddleware::class);
 $router->get('/api/webhook-logs', [ApiController::class, 'webhookLogs'], ApiTokenMiddleware::class);

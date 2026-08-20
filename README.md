@@ -28,6 +28,7 @@ Worker Node.js + Baileys
 - API, webhooks e rotas internas: `docs/api.md`
 - Instalacao detalhada: `docs/installation.md`
 - Versionamento e publicacoes: `docs/versioning.md`
+- Seguranca de mensageria e limites: `docs/messaging-safety.md`
 - Colecao Postman: `docs/ZapCore-Gateway.postman_collection.json`
 
 ## Versao

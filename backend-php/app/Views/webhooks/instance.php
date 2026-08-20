@@ -30,7 +30,7 @@
                 <div class="mb-3">
                     <label class="form-label text-muted fw-bold" style="font-size:0.85rem;">Eventos</label>
                     <div class="row g-2">
-                        <?php foreach (['instance.qr','instance.connected','instance.disconnected','instance.logged_out','message.received','message.sent','message.delivered','message.read','message.failed'] as $event): ?>
+                        <?php foreach (['instance.qr','instance.connected','instance.disconnected','instance.logged_out','message.received','message.sent','message.delivered','message.read','message.failed','recipient.opted_in','recipient.opted_out'] as $event): ?>
                         <div class="col-md-6">
                             <label class="d-flex align-items-center gap-2 bg-white rounded-pill px-3 py-2 shadow-sm">
                                 <input type="checkbox" name="events[]" value="<?= htmlspecialchars($event) ?>">

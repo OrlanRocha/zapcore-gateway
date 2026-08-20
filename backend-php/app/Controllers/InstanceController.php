@@ -8,9 +8,11 @@ use App\Core\Response;
 use App\Core\Auth;
 use App\Models\Instance;
 use App\Models\Log;
+use App\Models\RecipientConsent;
 use App\Models\User;
 use App\Core\App;
 use App\Services\QueueService;
+use App\Services\JidService;
 use App\Services\WebhookDispatcher;
 
 class InstanceController extends Controller
@@ -115,6 +117,7 @@ class InstanceController extends Controller
         $instanceWebhooks = $webhooksStmt->fetchAll();
         $canManageShares = $instance->access_role === 'owner';
         $instanceShares = $canManageShares ? Instance::shares($instance->id) : [];
+        $recipientConsents = $canManageShares ? RecipientConsent::listForInstance($instance->id) : [];
 
         $view = 'instances/show';
         ob_start();
@@ -267,7 +270,8 @@ class InstanceController extends Controller
                     'message_id' => $queued['message']->id,
                     'queue_id' => $queued['queue']->id,
                     'chat_type' => $queued['chat_type'],
-                    'to_jid' => $queued['to_jid']
+                    'to_jid' => $queued['to_jid'],
+                    'scheduled_at' => $queued['scheduled_at']
                 ]
             ]);
         } catch (\Throwable $e) {
@@ -305,6 +309,37 @@ class InstanceController extends Controller
             return $response->json(['success' => false, 'error' => 'Compartilhamento nao encontrado'], 404);
         }
         return $response->json(['success' => true]);
+    }
+
+    public function grantConsent(Request $request, Response $response, string $id)
+    {
+        $ownerId = (int) Auth::user()->id;
+        $instance = Instance::findOwnedById((int) $id, $ownerId);
+        if (!$instance) return $response->json(['success' => false, 'error' => 'Instance not found'], 404);
+
+        try {
+            $body = $request->getBody();
+            $jid = JidService::normalize((string) ($body['to'] ?? ''), 'user')['jid'];
+            RecipientConsent::grant($instance->id, $jid, 'manual', $ownerId, $body['note'] ?? null);
+            return $response->json(['success' => true, 'jid' => $jid]);
+        } catch (\InvalidArgumentException $e) {
+            return $response->json(['success' => false, 'error' => $e->getMessage()], 422);
+        }
+    }
+
+    public function revokeConsent(Request $request, Response $response, string $id)
+    {
+        $ownerId = (int) Auth::user()->id;
+        $instance = Instance::findOwnedById((int) $id, $ownerId);
+        if (!$instance) return $response->json(['success' => false, 'error' => 'Instance not found'], 404);
+
+        try {
+            $jid = JidService::normalize((string) ($request->getBody()['to'] ?? ''), 'user')['jid'];
+            RecipientConsent::revoke($instance->id, $jid, 'manual', 'Revogado pelo proprietario da instancia');
+            return $response->json(['success' => true, 'jid' => $jid]);
+        } catch (\InvalidArgumentException $e) {
+            return $response->json(['success' => false, 'error' => $e->getMessage()], 422);
+        }
     }
 
     private static function uuid(): string
