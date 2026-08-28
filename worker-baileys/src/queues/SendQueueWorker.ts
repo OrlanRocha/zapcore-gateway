@@ -88,12 +88,33 @@ export class SendQueueWorker {
             this.lastSendAt.set(item.instance_id, Date.now());
 
             const waMsgId = sentMsg?.key?.id || `unknown_${Date.now()}`;
-            await pool.query("UPDATE send_queue SET status = 'sent', processed_at = NOW() WHERE id = ?", [item.id]);
-            await PhpApiClient.messageStatus({
-                message_id: item.message_id,
-                whatsapp_message_id: waMsgId,
-                status: 'sent'
-            });
+            await pool.query(`
+                UPDATE send_queue sq
+                JOIN messages m ON m.id = sq.message_id
+                SET sq.status = 'sent',
+                    sq.processed_at = NOW(),
+                    sq.error_message = NULL,
+                    m.status = 'sent',
+                    m.whatsapp_message_id = ?,
+                    m.sent_at = COALESCE(m.sent_at, NOW()),
+                    m.error_message = NULL
+                WHERE sq.id = ?
+            `, [waMsgId, item.id]);
+
+            // The message is already sent. A callback outage must never queue it again.
+            try {
+                await PhpApiClient.messageStatus({
+                    message_id: item.message_id,
+                    whatsapp_message_id: waMsgId,
+                    status: 'sent'
+                });
+            } catch (callbackError) {
+                logger.error({
+                    error: this.safeErrorLog(callbackError),
+                    queueId: item.id,
+                    messageId: item.message_id
+                }, 'Message sent, but PHP status callback failed');
+            }
 
         } catch (error: any) {
             logger.error({ error: this.safeErrorLog(error), queueId: item.id }, 'Failed to process queue item');

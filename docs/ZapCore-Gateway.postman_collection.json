@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "f58953ad-52a1-4d86-a22e-8105f080e1c5",
     "name": "ZapCore Gateway",
-    "description": "Colecao Postman para testar o ZapCore Gateway: instancias, conexao QR/PIN, mensagens, webhooks e rotas internas do worker.",
+    "description": "Colecao Postman para testar o ZapCore Gateway: instancias, conexao QR/PIN, consentimentos, mensageria segura, webhooks e rotas internas do worker. Com MESSAGE_REQUIRE_OPT_IN=true, registre o consentimento antes de enviar mensagens individuais.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -35,6 +35,14 @@
     {
       "key": "phone_number",
       "value": "5511999999999"
+    },
+    {
+      "key": "consent_source",
+      "value": "formulario_site"
+    },
+    {
+      "key": "consent_note",
+      "value": "Aceite registrado pelo proprietario da instancia"
     },
     {
       "key": "group_jid",
@@ -74,6 +82,19 @@
         },
         {
           "name": "Criar instancia",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Instancia criada', function () { pm.expect(pm.response.code).to.be.oneOf([200, 201]); });",
+                  "const body = pm.response.json();",
+                  "if (body.data && body.data.instance && body.data.instance.uuid) pm.collectionVariables.set('instance_uuid', body.data.instance.uuid);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -151,7 +172,22 @@
       "item": [
         {
           "name": "Enviar texto - usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Mensagem aceita pela fila', function () { pm.response.to.have.status(201); });",
+                  "const body = pm.response.json();",
+                  "pm.test('Resposta informa agendamento', function () { pm.expect(body.data).to.have.property('scheduled_at'); });",
+                  "if (body.data && body.data.message_id) pm.collectionVariables.set('message_id', body.data.message_id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
+            "description": "Exige consentimento ativo para {{phone_number}} quando MESSAGE_REQUIRE_OPT_IN=true. Execute primeiro Consentimentos > Registrar consentimento.",
             "method": "POST",
             "header": [
               {
@@ -202,7 +238,22 @@
         },
         {
           "name": "Enviar midia - usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Midia aceita pela fila', function () { pm.response.to.have.status(201); });",
+                  "const body = pm.response.json();",
+                  "pm.test('Resposta informa agendamento', function () { pm.expect(body.data).to.have.property('scheduled_at'); });",
+                  "if (body.data && body.data.message_id) pm.collectionVariables.set('message_id', body.data.message_id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
+            "description": "Exige consentimento ativo para {{phone_number}} quando MESSAGE_REQUIRE_OPT_IN=true. A resposta inclui scheduled_at quando o envio for reservado para um horario futuro.",
             "method": "POST",
             "header": [
               {
@@ -297,6 +348,92 @@
       ]
     },
     {
+      "name": "Consentimentos",
+      "description": "Somente o proprietario da instancia pode consultar ou alterar consentimentos. Opt-out cancela mensagens ainda pendentes para o contato.",
+      "item": [
+        {
+          "name": "Listar consentimentos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Consentimentos listados', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Resposta contem consents', function () { pm.expect(pm.response.json().data.consents).to.be.an('array'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "description": "Retorna ate 500 registros da instancia, incluindo status opted_in/opted_out, origem e datas.",
+            "url": "{{base_url}}/api/consents?instance_uuid={{instance_uuid}}"
+          }
+        },
+        {
+          "name": "Registrar consentimento",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Consentimento registrado', function () { pm.response.to.have.status(201); });",
+                  "pm.test('Contato ficou autorizado', function () { pm.expect(pm.response.json().data.status).to.eql('opted_in'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "description": "Registra ou reativa o opt-in do contato. Use source e note para manter evidencia da origem do aceite.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"instance_uuid\": \"{{instance_uuid}}\",\n  \"to\": \"{{phone_number}}\",\n  \"source\": \"{{consent_source}}\",\n  \"note\": \"{{consent_note}}\"\n}"
+            },
+            "url": "{{base_url}}/api/consents"
+          }
+        },
+        {
+          "name": "Revogar consentimento",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Consentimento revogado', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Contato ficou bloqueado', function () { pm.expect(pm.response.json().data.status).to.eql('opted_out'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "description": "Revoga o consentimento e cancela itens ainda pendentes para o destinatario.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"instance_uuid\": \"{{instance_uuid}}\",\n  \"to\": \"{{phone_number}}\",\n  \"source\": \"solicitacao_cliente\",\n  \"note\": \"Revogacao solicitada pelo titular\"\n}"
+            },
+            "url": "{{base_url}}/api/consents/revoke"
+          }
+        }
+      ]
+    },
+    {
       "name": "Webhooks",
       "item": [
         {
@@ -311,7 +448,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"instance_uuid\": \"{{instance_uuid}}\",\n  \"name\": \"Webhook Atendimento\",\n  \"url\": \"https://example.com/webhook\",\n  \"secret\": \"troque_este_secret\",\n  \"events\": [\n    \"instance.connected\",\n    \"message.received\",\n    \"message.sent\",\n    \"message.failed\"\n  ],\n  \"active\": true\n}"
+              "raw": "{\n  \"instance_uuid\": \"{{instance_uuid}}\",\n  \"name\": \"Webhook Atendimento\",\n  \"url\": \"https://example.com/webhook\",\n  \"secret\": \"troque_este_secret\",\n  \"events\": [\n    \"instance.connected\",\n    \"message.received\",\n    \"message.sent\",\n    \"message.failed\",\n    \"recipient.opted_in\",\n    \"recipient.opted_out\"\n  ],\n  \"active\": true\n}"
             },
             "url": "{{base_url}}/api/webhooks"
           }
@@ -407,6 +544,109 @@
             ],
             "url": "{{worker_url}}/worker/instances/{{instance_uuid}}/disconnect"
           }
+        },
+        {
+          "name": "Callbacks Worker para PHP",
+          "description": "Rotas internas autenticadas por Internal-Secret. Use apenas para diagnostico do worker; elas alteram estado e historico da instancia.",
+          "item": [
+            {
+              "name": "Atualizar status da instancia",
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [
+                  { "key": "Internal-Secret", "value": "{{internal_secret}}" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"connected\",\n  \"qr\": null,\n  \"phone_number\": \"{{phone_number}}\",\n  \"profile_name\": \"Instancia Postman\"\n}"
+                },
+                "url": "{{base_url}}/internal/instances/{{instance_uuid}}/status"
+              }
+            },
+            {
+              "name": "Atualizar QR da instancia",
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [
+                  { "key": "Internal-Secret", "value": "{{internal_secret}}" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"waiting_qr\",\n  \"qr\": \"QR_DATA_DE_TESTE\"\n}"
+                },
+                "url": "{{base_url}}/internal/instances/{{instance_uuid}}/qr"
+              }
+            },
+            {
+              "name": "Registrar mensagem recebida",
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "description": "Simula uma mensagem recebida. O texto SIM registra opt-in; troque por SAIR para validar opt-out e cancelamento de pendencias.",
+                "header": [
+                  { "key": "Internal-Secret", "value": "{{internal_secret}}" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"instance_uuid\": \"{{instance_uuid}}\",\n  \"message\": {\n    \"key\": {\n      \"id\": \"postman_received_{{$timestamp}}\",\n      \"remoteJid\": \"{{phone_number}}@s.whatsapp.net\",\n      \"fromMe\": false\n    },\n    \"message\": {\n      \"conversation\": \"SIM\"\n    },\n    \"messageTimestamp\": {{$timestamp}},\n    \"pushName\": \"Contato Postman\"\n  },\n  \"media\": null\n}"
+                },
+                "url": "{{base_url}}/internal/messages/received"
+              }
+            },
+            {
+              "name": "Atualizar status da mensagem",
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [
+                  { "key": "Internal-Secret", "value": "{{internal_secret}}" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"message_id\": {{message_id}},\n  \"status\": \"delivered\",\n  \"whatsapp_message_id\": \"postman_wa_message_id\"\n}"
+                },
+                "url": "{{base_url}}/internal/messages/status"
+              }
+            },
+            {
+              "name": "Sincronizar contatos",
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [
+                  { "key": "Internal-Secret", "value": "{{internal_secret}}" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"instance_uuid\": \"{{instance_uuid}}\",\n  \"contacts\": [\n    {\n      \"id\": \"{{phone_number}}@s.whatsapp.net\",\n      \"name\": \"Contato Postman\",\n      \"notify\": \"Contato Postman\"\n    }\n  ]\n}"
+                },
+                "url": "{{base_url}}/internal/contacts/sync"
+              }
+            },
+            {
+              "name": "Registrar log de conexao",
+              "request": {
+                "auth": { "type": "noauth" },
+                "method": "POST",
+                "header": [
+                  { "key": "Internal-Secret", "value": "{{internal_secret}}" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"instance_uuid\": \"{{instance_uuid}}\",\n  \"event\": \"connecting\",\n  \"description\": \"Teste de callback pelo Postman\",\n  \"raw_json\": {\n    \"source\": \"postman\"\n  }\n}"
+                },
+                "url": "{{base_url}}/internal/connection-log"
+              }
+            }
+          ]
         }
       ]
     }

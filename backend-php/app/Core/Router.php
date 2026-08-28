@@ -2,6 +2,8 @@
 
 namespace App\Core;
 
+use App\Middlewares\CsrfMiddleware;
+
 class Router
 {
     public array $routes = [];
@@ -37,6 +39,10 @@ class Router
     {
         $method = $this->request->getMethod();
         $url = $this->request->getUrl();
+
+        if ($method === 'post' && !str_starts_with($url, '/api/') && !str_starts_with($url, '/internal/')) {
+            (new CsrfMiddleware())->handle($this->request, $this->response);
+        }
 
         $routes = $this->routes[$method] ?? [];
         

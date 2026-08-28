@@ -223,7 +223,9 @@ curl -X POST http://localhost:8080/api/messages/text \
   }'
 ```
 
-O PHP valida token e instancia, cria `messages`, cria `send_queue`, e o worker processa a fila.
+O PHP valida token e instancia, cria `messages`, cria `send_queue`, e o worker processa a fila. Para contatos individuais, registre antes o consentimento pela API ou pelo painel quando `MESSAGE_REQUIRE_OPT_IN=true`.
+
+O worker atualiza a fila e a mensagem juntas depois que o WhatsApp aceita o envio. Os callbacks internos possuem timeout e retentativas com backoff para falhas transitorias, reduzindo perda de atualizacoes durante reinicios breves do backend.
 
 Use `chat_type` para separar o destino:
 
@@ -269,6 +271,10 @@ Mensagens recebidas com imagem, figurinha, audio, video ou documento sao baixada
 - `POST /api/messages/text`
 - `POST /api/messages/media`
 - `GET /api/messages`
+- `GET /api/messages/{id}/media`
+- `GET /api/consents`
+- `POST /api/consents`
+- `POST /api/consents/revoke`
 - `POST /api/webhooks`
 - `GET /api/webhook-logs`
 
@@ -299,7 +305,10 @@ Backend protegido por `Internal-Secret`:
 - `POST /internal/instances/{uuid}/qr`
 - `POST /internal/messages/received`
 - `POST /internal/messages/status`
+- `POST /internal/contacts/sync`
 - `POST /internal/connection-log`
+
+O worker tenta novamente callbacks internos que falharem por timeout, erro de rede, HTTP `408`, `429` ou `5xx`. Erros permanentes `4xx` nao sao repetidos.
 
 Worker protegido por `Worker-Secret`:
 
@@ -321,6 +330,8 @@ Eventos suportados:
 - `message.delivered`
 - `message.read`
 - `message.failed`
+- `recipient.opted_in`
+- `recipient.opted_out`
 
 Payload:
 
@@ -345,9 +356,12 @@ X-ZapCore-Signature
 - Login usa sessao PHP.
 - Tokens de API sao armazenados como SHA-256.
 - Rotas internas exigem secrets.
+- Requisicoes web `POST` enviadas por outra origem sao bloqueadas antes de chegar aos controllers.
 - Estado Baileys e criptografado em `baileys_auth` com `APP_KEY`.
 - Payloads sao validados antes de entrar na fila.
 - Envios sao bloqueados se a instancia nao estiver conectada.
+- Contatos individuais exigem consentimento ativo por padrao, com suporte a opt-out e cancelamento de itens pendentes.
+- A fila e o historico sao sincronizados na mesma atualizacao depois de um envio aceito.
 - Existe rate limit basico por token em `storage/cache`.
 - `.env`, logs, cache e midias locais ficam ignorados no `.gitignore`.
 
