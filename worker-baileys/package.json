@@ -9,7 +9,7 @@
     "build": "tsc"
   },
   "dependencies": {
-    "@whiskeysockets/baileys": "^6.17.16",
+    "@whiskeysockets/baileys": "^6.7.24",
     "axios": "^1.6.8",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
