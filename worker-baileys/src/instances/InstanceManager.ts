@@ -304,7 +304,14 @@ export class InstanceManager {
             let lastError: unknown;
             for (let attempt = 1; attempt <= 3; attempt++) {
                 try {
-                    buffer = await downloadMediaMessage(msg, 'buffer', {}, { logger: pino({ level: 'silent' }) as any, reuploadRequest: (message: any) => sock.updateMediaMessage(message) }) as Buffer;
+                    buffer = await downloadMediaMessage(msg, 'buffer', {}, {
+                        logger: pino({ level: 'silent' }) as any,
+                        // Expired media URLs require Baileys to request a fresh copy first.
+                        reuploadRequest: async (message: any) => {
+                            const refreshed = await sock.updateMediaMessage(message);
+                            return refreshed?.message || refreshed;
+                        }
+                    }) as Buffer;
                     break;
                 } catch (error) {
                     lastError = error;
