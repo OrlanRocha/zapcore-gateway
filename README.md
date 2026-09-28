@@ -38,6 +38,12 @@ destinadas a publicacao devem ser registradas em `CHANGELOG.md`. Para preparar
 uma nova versao, use o script `scripts/release.ps1`; o fluxo completo esta em
 `docs/versioning.md`.
 
+Versao publicada atual: **1.1.1**.
+
+Cada mudanca concluida deve ser registrada, validada e publicada no GitHub com
+commit, tag e Release. O README e o changelog devem acompanhar qualquer alteracao
+que afete instalacao, operacao, seguranca, API ou comportamento do sistema.
+
 ## Instalar com Docker
 
 ```bash
@@ -259,6 +265,9 @@ curl -X POST http://localhost:8080/api/messages/media \
 `media_type` aceita `image`, `audio`, `video` e `document`. A `media_url` precisa apontar para um arquivo publico real, acessivel pelo servidor.
 
 Mensagens recebidas com imagem, figurinha, audio, video ou documento sao baixadas pelo worker e salvas em `backend-php/storage/media`. A listagem de mensagens retorna `media_url` quando houver anexo. Use `GET /api/messages/{message_id}/media` com o mesmo Bearer token para visualizar ou baixar o arquivo.
+
+O worker usa uma versao corrigida do Baileys e tenta renovar automaticamente URLs
+de midia expiradas antes de desistir do download.
 
 ## Rotas REST principais
 

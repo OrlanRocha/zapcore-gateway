@@ -5,6 +5,28 @@ O formato segue Keep a Changelog e o projeto usa Versionamento Semantico.
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-09-28
+
+### Fixed
+
+- Downloads de midia recebida agora tentam renovar URLs expiradas pelo Baileys.
+- Callbacks internos possuem timeout, retentativas e backoff para falhas transitorias.
+- Atualizacao atomica do status da fila e do historico apos envios aceitos.
+- Configuracao de producao sem o virtual host legado do PHP 8.2.
+
+### Security
+
+- Atualizado Baileys para `6.7.24` e fixada uma versao corrigida de `qs`.
+- Auditoria das dependencias de producao sem vulnerabilidades conhecidas.
+- Permissoes excessivas dos diretorios de producao foram reduzidas.
+- Protecao de requisicoes web contra POSTs originados de outros sites.
+
+### Operations
+
+- Swap persistente de 2 GB configurado no servidor de producao.
+- Usuario SSH administrativo dedicado e login SSH do root desabilitado.
+- Processo de publicacao passa a exigir commit, tag e GitHub Release por mudanca concluida.
+
 ## [1.1.0] - 2026-08-20
 ### Security
 

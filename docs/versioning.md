@@ -14,6 +14,8 @@ O arquivo `VERSION` e a fonte canonica. O script de publicacao mantem
 1. Registre mudancas relevantes em `CHANGELOG.md`, dentro de `[Unreleased]`.
 2. Use commits pequenos e descritivos.
 3. Mantenha a branch `main` em estado publicavel.
+4. Ao concluir uma mudanca, atualize a documentacao afetada, envie o commit e
+   publique uma tag e uma GitHub Release correspondente.
 
 Categorias recomendadas para o changelog: `Added`, `Changed`, `Deprecated`,
 `Removed`, `Fixed` e `Security`.
@@ -49,6 +51,13 @@ Ele nao envia nada ao remoto. Revise o commit antes de publicar:
 git show --stat v1.0.1
 git push origin main
 git push origin v1.0.1
+```
+
+Depois do push, publique a Release usando as notas da secao correspondente do
+`CHANGELOG.md`:
+
+```powershell
+gh release create v1.0.1 --title "ZapCore Gateway v1.0.1" --notes-file release-notes.md
 ```
 
 Para preparar os arquivos sem criar commit ou tag:
