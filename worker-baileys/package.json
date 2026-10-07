@@ -1,11 +1,11 @@
 {
   "name": "zapcore-worker",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "ZapCore Gateway Baileys Worker",
   "main": "dist/index.js",
   "scripts": {
     "start": "node dist/index.js",
-    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "dev": "tsx watch src/index.ts",
     "build": "tsc"
   },
   "dependencies": {
@@ -25,7 +25,7 @@
     "@types/node": "^20.12.7",
     "@types/qrcode": "^1.5.5",
     "ts-node": "^10.9.2",
-    "ts-node-dev": "^2.0.0",
+    "tsx": "^4.23.15",
     "typescript": "^5.4.5"
   }
 }

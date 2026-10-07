@@ -5,6 +5,19 @@ O formato segue Keep a Changelog e o projeto usa Versionamento Semantico.
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-10-07
+
+### Security
+
+- Atualizados `axios`, `proxy-addr` e `sharp` para versoes corrigidas.
+- Removida a cadeia vulneravel de desenvolvimento do `ts-node-dev`, substituida
+  por `tsx` no modo watch.
+- Auditoria completa das dependencias Node sem vulnerabilidades conhecidas.
+
+### Changed
+
+- Producao sincronizada com a versao publicada mais recente do GitHub.
+
 ## [1.1.1] - 2026-09-28
 
 ### Fixed
