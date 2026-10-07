@@ -64,6 +64,8 @@ services:
     depends_on:
       - mysql
       - php-app
+    environment:
+      - MEDIA_STORAGE_PATH=/app/storage/media
     networks:
       - zapcore_network
     command: npm run dev
