@@ -110,7 +110,8 @@ class MessageController extends Controller
         $stmt->execute(['id' => $id, 'owner_user_id' => $userId, 'shared_user_id' => $userId]);
         $media = $stmt->fetch();
         if (!$media) { $response->setStatusCode(404); exit('Media not found'); }
-        $base = realpath(__DIR__ . '/../../storage/media');
+        if (!empty($media['removed_at'])) { $response->setStatusCode(410); exit('Media removed by retention policy'); }
+        $base = realpath(getenv('MEDIA_STORAGE_PATH') ?: __DIR__ . '/../../storage/media');
         $file = $base ? realpath($base . DIRECTORY_SEPARATOR . $media['file_path']) : false;
         if (!$base || !$file || !str_starts_with($file, $base . DIRECTORY_SEPARATOR) || !is_file($file)) { $response->setStatusCode(404); exit('Media file not found'); }
         header('Content-Type: ' . ($media['mime_type'] ?: 'application/octet-stream'));
@@ -153,7 +154,7 @@ class MessageController extends Controller
         $whereSql = implode(' AND ', $where);
         $count = App::$app->db->prepare("SELECT COUNT(*) FROM messages m LEFT JOIN chats c ON c.id = m.chat_id LEFT JOIN contact_identities ci ON ci.instance_id = m.instance_id AND (ci.lid_jid = c.jid OR ci.phone_jid = c.jid) WHERE {$whereSql}"); $count->execute($params);
         $total = (int) $count->fetchColumn(); $offset = ($page - 1) * $limit;
-        $stmt = App::$app->db->prepare("SELECT m.id, m.direction, m.from_jid, m.to_jid, m.chat_type, m.message_type, m.body, m.status, m.created_at, m.raw_json, mm.file_name, mm.mime_type, CASE WHEN mm.id IS NOT NULL THEN CONCAT('/messages/', m.id, '/media') WHEN m.direction = 'outbound' AND m.message_type IN ('image','audio','video','document') AND m.body LIKE 'http%' THEN m.body ELSE NULL END AS media_url FROM messages m LEFT JOIN chats c ON c.id = m.chat_id LEFT JOIN contact_identities ci ON ci.instance_id = m.instance_id AND (ci.lid_jid = c.jid OR ci.phone_jid = c.jid) LEFT JOIN message_media mm ON mm.message_id = m.id WHERE {$whereSql} ORDER BY m.id DESC LIMIT :limit OFFSET :offset");
+        $stmt = App::$app->db->prepare("SELECT m.id, m.direction, m.from_jid, m.to_jid, m.chat_type, m.message_type, m.body, m.status, m.created_at, m.raw_json, mm.file_name, mm.mime_type, CASE WHEN mm.removed_at IS NULL AND mm.id IS NOT NULL THEN CONCAT('/messages/', m.id, '/media') WHEN mm.id IS NULL AND m.direction = 'outbound' AND m.message_type IN ('image','audio','video','document') AND m.body LIKE 'http%' THEN m.body ELSE NULL END AS media_url, CASE WHEN mm.removed_at IS NULL THEN 0 ELSE 1 END AS media_removed, mm.removed_at AS media_removed_at FROM messages m LEFT JOIN chats c ON c.id = m.chat_id LEFT JOIN contact_identities ci ON ci.instance_id = m.instance_id AND (ci.lid_jid = c.jid OR ci.phone_jid = c.jid) LEFT JOIN message_media mm ON mm.message_id = m.id WHERE {$whereSql} ORDER BY m.id DESC LIMIT :limit OFFSET :offset");
         foreach ($params as $key => $value) $stmt->bindValue($key, $value);
         $stmt->bindValue('limit', $limit, \PDO::PARAM_INT); $stmt->bindValue('offset', $offset, \PDO::PARAM_INT); $stmt->execute();
         $messages = array_map(static function (array $row): array {
@@ -166,7 +167,7 @@ class MessageController extends Controller
             }
 
             $thumbnail = self::thumbnailDataUri($payload);
-            if (!$row['media_url'] && $thumbnail) {
+            if (!$row['media_removed'] && !$row['media_url'] && $thumbnail) {
                 $row['media_url'] = $thumbnail;
             }
 

@@ -364,7 +364,9 @@ class ApiController extends Controller
                 m.updated_at,
                 mm.file_name AS media_file_name,
                 mm.mime_type AS media_mime_type,
-                CASE WHEN mm.id IS NULL THEN NULL ELSE CONCAT('/api/messages/', m.id, '/media') END AS media_url,
+                CASE WHEN mm.removed_at IS NULL AND mm.id IS NOT NULL THEN CONCAT('/api/messages/', m.id, '/media') ELSE NULL END AS media_url,
+                CASE WHEN mm.removed_at IS NULL THEN 0 ELSE 1 END AS media_removed,
+                mm.removed_at AS media_removed_at,
                 i.uuid AS instance_uuid,
                 i.name AS instance_name
             FROM messages m
@@ -603,7 +605,8 @@ class ApiController extends Controller
         $stmt->execute(['id' => $id, 'owner_user_id' => $apiUserId, 'shared_user_id' => $apiUserId]);
         $media = $stmt->fetch();
         if (!$media) return $response->error('Media not found', 404);
-        $base = realpath(__DIR__ . '/../../storage/media');
+        if (!empty($media['removed_at'])) return $response->error('Media removed by retention policy', 410);
+        $base = realpath(getenv('MEDIA_STORAGE_PATH') ?: __DIR__ . '/../../storage/media');
         $file = $base ? realpath($base . DIRECTORY_SEPARATOR . $media['file_path']) : false;
         if (!$base || !$file || !str_starts_with($file, $base . DIRECTORY_SEPARATOR) || !is_file($file)) return $response->error('Media file not found', 404);
         header('Content-Type: ' . ($media['mime_type'] ?: 'application/octet-stream'));

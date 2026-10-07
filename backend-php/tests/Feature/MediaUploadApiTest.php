@@ -19,4 +19,18 @@ final class MediaUploadApiTest extends TestCase
         }
         self::assertStringNotContainsString("['instance_uuid', 'to', 'media_type', 'media_url']", $api);
     }
+
+    public function test_media_reads_expose_retention_state(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $api = file_get_contents($root . '/app/Controllers/ApiController.php');
+        $web = file_get_contents($root . '/app/Controllers/MessageController.php');
+
+        foreach ([$api, $web] as $controller) {
+            $this->assertStringContainsString('media_removed', $controller);
+            $this->assertStringContainsString('media_removed_at', $controller);
+            $this->assertStringContainsString('Media removed by retention policy', $controller);
+            $this->assertStringContainsString('410', $controller);
+        }
+    }
 }
