@@ -10,6 +10,8 @@ use App\Core\Auth;
 use App\Models\Instance;
 use App\Models\Message;
 use App\Services\JidService;
+use App\Services\MediaUploadException;
+use App\Services\MediaUploadService;
 use App\Services\QueueService;
 
 class MessageController extends Controller
@@ -269,11 +271,31 @@ class MessageController extends Controller
         if (!$instance) return $response->error('Instance not found', 404);
         if ($instance->status !== 'connected') return $response->error('Instance not connected', 422);
         $to = trim((string) ($body['to'] ?? '')); $chatType = $body['chat_type'] ?? 'user';
+        $upload = $request->getUploadedFile('media');
+        $mediaUrl = trim((string) ($body['media_url'] ?? ''));
+        if ($upload !== null && $mediaUrl !== '') return $response->error('Provide either media or media_url, not both', 422);
+        $isMedia = $upload !== null || $mediaUrl !== '' || !empty($body['media_type']);
+        if ($isMedia && $upload === null && $mediaUrl === '') return $response->error('A media file or media_url is required', 422);
+
+        $uploadService = new MediaUploadService();
+        $storedMedia = null;
         try {
-            if (!empty($body['media_url'])) $queued = QueueService::enqueueMediaTo($instance, $to, (string) ($body['media_type'] ?? 'image'), (string) $body['media_url'], $body['caption'] ?? null, $body['file_name'] ?? null, $chatType);
-            else $queued = QueueService::enqueueTextTo($instance, $to, trim((string) ($body['text'] ?? '')), $chatType);
+            if ($upload !== null) {
+                $storedMedia = $uploadService->store($upload, (int) $instance->id, (string) ($body['media_type'] ?? 'image'));
+                $queued = QueueService::enqueueStoredMediaTo($instance, $to, (string) ($body['media_type'] ?? 'image'), $storedMedia, $body['caption'] ?? $body['text'] ?? null, $chatType);
+            } elseif ($mediaUrl !== '') {
+                $queued = QueueService::enqueueMediaTo($instance, $to, (string) ($body['media_type'] ?? 'image'), $mediaUrl, $body['caption'] ?? $body['text'] ?? null, $body['file_name'] ?? null, $chatType);
+            } else {
+                $queued = QueueService::enqueueTextTo($instance, $to, trim((string) ($body['text'] ?? '')), $chatType);
+            }
             return $response->success($queued, 'Mensagem adicionada a fila');
-        } catch (\Throwable $e) { return $response->error($e->getMessage(), 422); }
+        } catch (MediaUploadException $e) {
+            if ($storedMedia !== null) $uploadService->remove($storedMedia);
+            return $response->error($e->getMessage(), $e->httpStatus);
+        } catch (\Throwable $e) {
+            if ($storedMedia !== null) $uploadService->remove($storedMedia);
+            return $response->error($e->getMessage(), 422);
+        }
     }
 
     private static function extractMessagePayload(array $raw): array

@@ -12,6 +12,8 @@ use App\Models\Message;
 use App\Models\RecipientConsent;
 use App\Models\Webhook;
 use App\Services\JidService;
+use App\Services\MediaUploadException;
+use App\Services\MediaUploadService;
 use App\Services\QueueService;
 use App\Services\WebhookDispatcher;
 
@@ -188,10 +190,19 @@ class ApiController extends Controller
     public function sendMedia(Request $request, Response $response)
     {
         $body = $request->getBody();
-        foreach (['instance_uuid', 'to', 'media_type', 'media_url'] as $field) {
+        foreach (['instance_uuid', 'to', 'media_type'] as $field) {
             if (!isset($body[$field]) || trim((string) $body[$field]) === '') {
                 return $response->error("Missing required field: {$field}", 422);
             }
+        }
+
+        $upload = $request->getUploadedFile('media');
+        $mediaUrl = trim((string) ($body['media_url'] ?? ''));
+        if ($upload !== null && $mediaUrl !== '') {
+            return $response->error('Provide either media or media_url, not both', 422);
+        }
+        if ($upload === null && $mediaUrl === '') {
+            return $response->error('A media file or media_url is required', 422);
         }
 
         $instance = $this->findInstanceForApi($request, $body['instance_uuid']);
@@ -199,16 +210,30 @@ class ApiController extends Controller
             return $response->error('Instance not found', 404);
         }
 
+        $uploadService = new MediaUploadService();
+        $storedMedia = null;
         try {
-            $queued = QueueService::enqueueMediaTo(
-                $instance,
-                (string) $body['to'],
-                (string) $body['media_type'],
-                (string) $body['media_url'],
-                $body['caption'] ?? null,
-                $body['file_name'] ?? null,
-                $body['chat_type'] ?? $body['recipient_type'] ?? null
-            );
+            if ($upload !== null) {
+                $storedMedia = $uploadService->store($upload, (int) $instance->id, (string) $body['media_type']);
+                $queued = QueueService::enqueueStoredMediaTo(
+                    $instance,
+                    (string) $body['to'],
+                    (string) $body['media_type'],
+                    $storedMedia,
+                    $body['caption'] ?? null,
+                    $body['chat_type'] ?? $body['recipient_type'] ?? null
+                );
+            } else {
+                $queued = QueueService::enqueueMediaTo(
+                    $instance,
+                    (string) $body['to'],
+                    (string) $body['media_type'],
+                    $mediaUrl,
+                    $body['caption'] ?? null,
+                    $body['file_name'] ?? null,
+                    $body['chat_type'] ?? $body['recipient_type'] ?? null
+                );
+            }
 
             return $response->success([
                 'message_id' => $queued['message']->id,
@@ -217,9 +242,14 @@ class ApiController extends Controller
                 'chat_type' => $queued['chat_type'],
                 'scheduled_at' => $queued['scheduled_at']
             ], 'Media message queued for sending', 201);
+        } catch (MediaUploadException $e) {
+            if ($storedMedia !== null) $uploadService->remove($storedMedia);
+            return $response->error($e->getMessage(), $e->httpStatus);
         } catch (\InvalidArgumentException $e) {
+            if ($storedMedia !== null) $uploadService->remove($storedMedia);
             return $response->error($e->getMessage(), 422);
         } catch (\RuntimeException $e) {
+            if ($storedMedia !== null) $uploadService->remove($storedMedia);
             return $response->error($e->getMessage(), 409);
         }
     }

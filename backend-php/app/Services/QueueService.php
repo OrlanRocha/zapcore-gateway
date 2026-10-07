@@ -55,12 +55,35 @@ class QueueService
         return self::enqueue($instance, $to, $mediaType, $caption ?: $mediaUrl, array_filter($payload, static fn($value) => $value !== null), $chatType);
     }
 
+    public static function enqueueStoredMediaTo(Instance $instance, string $to, string $mediaType, StoredMedia $media, ?string $caption = null, ?string $chatType = null): array
+    {
+        $payload = self::buildStoredMediaPayload($mediaType, $media, $caption);
+
+        return self::enqueue($instance, $to, strtolower(trim($mediaType)), $caption ?: $media->displayName, $payload, $chatType, $media);
+    }
+
+    public static function buildStoredMediaPayload(string $mediaType, StoredMedia $media, ?string $caption = null): array
+    {
+        $mediaType = strtolower(trim($mediaType));
+        if (!in_array($mediaType, self::MEDIA_TYPES, true)) {
+            throw new \InvalidArgumentException('Invalid media_type');
+        }
+
+        return array_filter([
+            'local_media_path' => $media->relativePath,
+            'media_type' => $mediaType,
+            'mime_type' => $media->mimeType,
+            'file_name' => $media->displayName,
+            'caption' => $caption,
+        ], static fn($value) => $value !== null);
+    }
+
     public static function normalizeJid(string $to): string
     {
         return JidService::normalize($to)['jid'];
     }
 
-    private static function enqueue(Instance $instance, string $to, string $messageType, string $body, array $payload, ?string $chatType = null): array
+    private static function enqueue(Instance $instance, string $to, string $messageType, string $body, array $payload, ?string $chatType = null, ?StoredMedia $storedMedia = null): array
     {
         if ($instance->status !== 'connected') {
             throw new \RuntimeException('Instance not connected');
@@ -101,6 +124,16 @@ class QueueService
                 'payload_json' => json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
                 'scheduled_at' => $scheduledAt,
             ]);
+
+            if ($storedMedia !== null) {
+                App::$app->db->prepare("\n                    INSERT INTO message_media\n                        (message_id, file_path, file_name, mime_type, file_size, storage_origin)\n                    VALUES\n                        (:message_id, :file_path, :file_name, :mime_type, :file_size, 'outgoing')\n                ")->execute([
+                    'message_id' => $message->id,
+                    'file_path' => $storedMedia->relativePath,
+                    'file_name' => $storedMedia->displayName,
+                    'mime_type' => $storedMedia->mimeType,
+                    'file_size' => $storedMedia->size,
+                ]);
+            }
 
             App::$app->db->prepare("UPDATE messages SET status = 'queued' WHERE id = :id")
                 ->execute(['id' => $message->id]);
