@@ -52,6 +52,22 @@ class Request
         return $body;
     }
 
+    public function getUploadedFile(string $field): ?array
+    {
+        $file = $_FILES[$field] ?? null;
+        if (!is_array($file) || is_array($file['name'] ?? null)) {
+            return null;
+        }
+
+        return [
+            'name' => (string) ($file['name'] ?? ''),
+            'type' => (string) ($file['type'] ?? ''),
+            'tmp_name' => (string) ($file['tmp_name'] ?? ''),
+            'error' => (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE),
+            'size' => (int) ($file['size'] ?? 0),
+        ];
+    }
+
     private static function sanitizeArray(array $values): array
     {
         return array_map(static function ($value) {
