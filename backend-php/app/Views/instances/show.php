@@ -41,8 +41,29 @@ foreach (($connectionLogs ?? []) as $log) {
     </div>
     <form id="chat-form" class="chat-composer">
       <div class="d-flex gap-2 mb-2"><select id="chat-type" class="form-select"><option value="user">Usuario</option><option value="group">Grupo</option><option value="newsletter">Newsletter</option></select><input id="chat-to" class="form-control" placeholder="Destino ou JID" required></div>
-      <textarea id="chat-text" class="form-control mb-2" rows="2" placeholder="Digite uma mensagem"></textarea>
-      <div class="d-flex gap-2"><select id="chat-media-type" class="form-select" style="max-width:115px"><option value="image">Imagem</option><option value="video">Video</option><option value="audio">Audio</option><option value="document">Documento</option></select><input id="chat-media-url" class="form-control" placeholder="URL opcional da midia"><button class="pill-btn btn-black" type="submit"><i class="fas fa-paper-plane"></i></button></div>
+      <div class="chat-composer-modes" role="group" aria-label="Tipo de mensagem">
+        <button type="button" class="chat-mode active" data-composer-mode="text" aria-pressed="true"><i class="fas fa-message"></i><span>Texto</span></button>
+        <button type="button" class="chat-mode" data-composer-mode="image" aria-pressed="false"><i class="fas fa-image"></i><span>Imagem</span></button>
+        <button type="button" class="chat-mode" data-composer-mode="video" aria-pressed="false"><i class="fas fa-video"></i><span>Video</span></button>
+        <button type="button" class="chat-mode" data-composer-mode="audio" aria-pressed="false"><i class="fas fa-microphone"></i><span>Audio</span></button>
+        <button type="button" class="chat-mode" data-composer-mode="document" aria-pressed="false"><i class="fas fa-file-lines"></i><span>Documento</span></button>
+      </div>
+      <textarea id="chat-text" class="form-control" rows="2" placeholder="Digite uma mensagem"></textarea>
+      <section id="chat-media-panel" class="chat-media-panel" hidden>
+        <input id="chat-media-type" type="hidden" value="">
+        <input id="chat-media-file" class="visually-hidden" type="file">
+        <div id="chat-media-dropzone" class="chat-media-dropzone" role="button" tabindex="0" aria-controls="chat-media-file">
+          <i class="fas fa-cloud-arrow-up" aria-hidden="true"></i>
+          <div><strong>Arraste a midia aqui</strong><small>ou selecione um arquivo de ate 256 MB</small></div>
+          <span class="chat-file-action">Selecionar</span>
+        </div>
+        <div id="chat-selected-file" class="chat-selected-file" hidden></div>
+        <div class="chat-media-alternative"><span>ou use uma URL publica</span><input id="chat-media-url" class="form-control" type="url" placeholder="https://exemplo.com/arquivo"></div>
+      </section>
+      <div class="chat-composer-footer">
+        <div id="chat-composer-status" class="chat-composer-status" role="status" aria-live="polite"></div>
+        <button id="chat-send-button" class="chat-send-button" type="submit" title="Enviar mensagem" aria-label="Enviar mensagem"><i class="fas fa-paper-plane"></i></button>
+      </div>
     </form>
   </div>
 </div>
@@ -380,6 +401,7 @@ foreach (($connectionLogs ?? []) as $log) {
 </div>
 
 <?php ob_start(); ?>
+<script src="/js/chat-media-composer.js"></script>
 <script>
 const instanceId = '<?= (int) $instance->id ?>';
 let pollInterval;
@@ -392,6 +414,14 @@ document.addEventListener("DOMContentLoaded", function() {
     qrModal = new bootstrap.Modal(document.getElementById('qrModal'));
     instanceChat = new bootstrap.Offcanvas(document.getElementById('instanceChat'));
     const initStatus = '<?= htmlspecialchars($instance->status) ?>';
+    window.ChatMediaComposer.init({
+        form: document.getElementById('chat-form'),
+        endpoint: `/instances/${instanceId}/chat/send`,
+        onQueued: () => {
+            loadInstanceChat();
+            Swal.fire({toast:true,position:'top-end',icon:'success',title:'Mensagem na fila',showConfirmButton:false,timer:1800});
+        }
+    });
     if (initStatus === 'connecting' || initStatus === 'waiting_qr') {
         qrModal.show();
         startPolling();
@@ -454,10 +484,6 @@ function loadInstanceChat() {
         box.scrollTop = box.scrollHeight;
     }).catch(() => { document.getElementById('chat-messages').innerHTML = '<div class="text-center text-danger py-5">Nao foi possivel carregar esta conversa.</div>'; });
 }
-document.getElementById('chat-form').addEventListener('submit', function (event) {
-    event.preventDefault(); const mediaUrl = document.getElementById('chat-media-url').value.trim();
-    fetch(`/instances/${instanceId}/chat/send`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({to:document.getElementById('chat-to').value, chat_type:document.getElementById('chat-type').value, text:document.getElementById('chat-text').value, media_url:mediaUrl || undefined, media_type:document.getElementById('chat-media-type').value})}).then(r=>r.json()).then(data => { if (!data.success) return Swal.fire('Erro', data.error || 'Falha ao enviar', 'error'); document.getElementById('chat-text').value=''; document.getElementById('chat-media-url').value=''; loadInstanceChat(); Swal.fire({toast:true,position:'top-end',icon:'success',title:'Mensagem na fila',showConfirmButton:false,timer:1800}); });
-});
 document.getElementById('instanceChat').addEventListener('hidden.bs.offcanvas', stopChatRefresh);
 
 function setStatus(status) {
