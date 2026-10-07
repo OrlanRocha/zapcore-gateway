@@ -2,6 +2,8 @@ import pool from '../db';
 import { InstanceManager } from '../instances/InstanceManager';
 import { logger } from '../utils/logger';
 import { PhpApiClient } from '../services/PhpApiClient';
+import { config } from '../config';
+import { resolveLocalMedia } from '../media/LocalMediaResolver';
 
 export class SendQueueWorker {
     private static isRunning = false;
@@ -80,7 +82,8 @@ export class SendQueueWorker {
                 throw new Error('Instance not connected or socket not found');
             }
 
-            const payload = typeof item.payload_json === 'string' ? JSON.parse(item.payload_json) : item.payload_json;
+            const queuedPayload = typeof item.payload_json === 'string' ? JSON.parse(item.payload_json) : item.payload_json;
+            const payload = await resolveLocalMedia(queuedPayload, config.mediaStoragePath);
 
             await this.assertRecipientConsent(item.instance_id, item.to_jid);
             await this.enforceInstancePacing(item.instance_id);

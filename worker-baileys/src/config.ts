@@ -9,6 +9,7 @@ export const config = {
     workerSecret: process.env.WORKER_SECRET || '',
     phpApiUrl: process.env.PHP_API_URL || 'http://localhost:8080',
     phpInternalSecret: process.env.PHP_INTERNAL_SECRET || '',
+    mediaStoragePath: process.env.MEDIA_STORAGE_PATH || '/app/storage/media',
     appKey: process.env.APP_KEY || process.env.PHP_APP_KEY || 'change_me_32_chars_minimum_key_123',
     db: {
         host: process.env.DB_HOST || '127.0.0.1',
