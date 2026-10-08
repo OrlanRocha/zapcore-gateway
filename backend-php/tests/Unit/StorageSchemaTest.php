@@ -35,4 +35,12 @@ final class StorageSchemaTest extends TestCase
         self::assertMatchesRegularExpression('/absolute_bytes\s+BIGINT/i', $this->schema);
         self::assertStringContainsString('idx_message_media_created', $this->schema);
     }
+
+    public function test_migration_avoids_database_specific_if_not_exists_index_syntax(): void
+    {
+        self::assertStringNotContainsString('CREATE INDEX IF NOT EXISTS', $this->migration);
+        self::assertStringNotContainsString('ADD COLUMN IF NOT EXISTS', $this->migration);
+        self::assertStringContainsString('information_schema.statistics', $this->migration);
+        self::assertStringContainsString('information_schema.columns', $this->migration);
+    }
 }

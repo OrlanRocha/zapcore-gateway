@@ -1,11 +1,44 @@
-ALTER TABLE message_media
-    MODIFY COLUMN file_size BIGINT NULL,
-    ADD COLUMN IF NOT EXISTS storage_origin ENUM('incoming', 'outgoing') NOT NULL DEFAULT 'incoming' AFTER file_size,
-    ADD COLUMN IF NOT EXISTS removed_at TIMESTAMP NULL AFTER storage_origin,
-    ADD COLUMN IF NOT EXISTS removal_reason VARCHAR(100) NULL AFTER removed_at;
+DELIMITER //
 
-CREATE INDEX IF NOT EXISTS idx_message_media_created ON message_media (created_at, id);
-CREATE INDEX IF NOT EXISTS idx_message_media_removed ON message_media (removed_at, created_at);
+DROP PROCEDURE IF EXISTS zapcore_add_column_if_missing//
+CREATE PROCEDURE zapcore_add_column_if_missing(IN p_table VARCHAR(64), IN p_column VARCHAR(64), IN p_ddl TEXT)
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = p_table AND column_name = p_column
+    ) THEN
+        SET @zapcore_sql = p_ddl;
+        PREPARE zapcore_stmt FROM @zapcore_sql;
+        EXECUTE zapcore_stmt;
+        DEALLOCATE PREPARE zapcore_stmt;
+    END IF;
+END//
+
+DROP PROCEDURE IF EXISTS zapcore_add_index_if_missing//
+CREATE PROCEDURE zapcore_add_index_if_missing(IN p_table VARCHAR(64), IN p_index VARCHAR(64), IN p_ddl TEXT)
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.statistics
+        WHERE table_schema = DATABASE() AND table_name = p_table AND index_name = p_index
+    ) THEN
+        SET @zapcore_sql = p_ddl;
+        PREPARE zapcore_stmt FROM @zapcore_sql;
+        EXECUTE zapcore_stmt;
+        DEALLOCATE PREPARE zapcore_stmt;
+    END IF;
+END//
+
+DELIMITER ;
+
+ALTER TABLE message_media MODIFY COLUMN file_size BIGINT NULL;
+CALL zapcore_add_column_if_missing('message_media', 'storage_origin', 'ALTER TABLE message_media ADD COLUMN storage_origin ENUM(''incoming'', ''outgoing'') NOT NULL DEFAULT ''incoming'' AFTER file_size');
+CALL zapcore_add_column_if_missing('message_media', 'removed_at', 'ALTER TABLE message_media ADD COLUMN removed_at TIMESTAMP NULL AFTER storage_origin');
+CALL zapcore_add_column_if_missing('message_media', 'removal_reason', 'ALTER TABLE message_media ADD COLUMN removal_reason VARCHAR(100) NULL AFTER removed_at');
+CALL zapcore_add_index_if_missing('message_media', 'idx_message_media_created', 'CREATE INDEX idx_message_media_created ON message_media (created_at, id)');
+CALL zapcore_add_index_if_missing('message_media', 'idx_message_media_removed', 'CREATE INDEX idx_message_media_removed ON message_media (removed_at, created_at)');
+
+DROP PROCEDURE IF EXISTS zapcore_add_column_if_missing;
+DROP PROCEDURE IF EXISTS zapcore_add_index_if_missing;
 
 CREATE TABLE IF NOT EXISTS storage_settings (
     id TINYINT UNSIGNED PRIMARY KEY DEFAULT 1,
