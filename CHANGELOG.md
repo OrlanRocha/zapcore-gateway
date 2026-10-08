@@ -5,6 +5,41 @@ O formato segue Keep a Changelog e o projeto usa Versionamento Semantico.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-08
+
+### Added
+
+- Upload local de imagens, videos, audios e documentos pelo chat, com seletor,
+  arrastar e soltar e limite exato de 256 MiB.
+- Envio multipart pela API no campo `media`, mantendo `media_url` compativel.
+- Painel administrativo de armazenamento com metricas, simulacao, limpeza
+  manual, historico auditavel e agendamento configuravel.
+- Retencao por uso percentual da particao ou limite absoluto da pasta de midias
+  em MB/GB, removendo arquivos antigos sem apagar mensagens.
+- Comando nativo `storage-retention.php`, definicao cron e servico scheduler no
+  Docker Compose.
+
+### Changed
+
+- Worker resolve midias locais por caminho confinado ao diretorio configurado.
+- Listagens identificam anexos removidos e endpoints de midia retornam `410`.
+- Limites PHP atualizados para uploads de 256 MiB e corpo multipart de 260M.
+- README, instalacao, API e colecao Postman cobrem upload e retencao.
+
+### Security
+
+- Uploads validam tamanho, MIME real, tipo de midia, nome e caminho aleatorio.
+- Resolucao e exclusao usam caminhos canonicos, bloqueiam traversal e symlinks
+  fora da raiz, e a limpeza usa lock de banco contra execucoes concorrentes.
+- Midias pendentes ou em processamento nunca entram na selecao de retencao.
+
+### Operations
+
+- Bancos existentes devem aplicar `storage_retention_migration.sql`.
+- Proxies Nginx devem usar `client_max_body_size 260M`.
+- O agendador consulta a configuracao a cada cinco minutos; simulacoes nao
+  removem arquivos nem adiam a proxima execucao automatica.
+
 ## [1.1.2] - 2026-10-07
 
 ### Security

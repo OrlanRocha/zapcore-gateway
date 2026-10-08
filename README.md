@@ -38,7 +38,7 @@ destinadas a publicacao devem ser registradas em `CHANGELOG.md`. Para preparar
 uma nova versao, use o script `scripts/release.ps1`; o fluxo completo esta em
 `docs/versioning.md`.
 
-Versao publicada atual: **1.1.2**.
+Versao publicada atual: **1.2.0**.
 
 Cada mudanca concluida deve ser registrada, validada e publicada no GitHub com
 commit, tag e Release. O README e o changelog devem acompanhar qualquer alteracao
