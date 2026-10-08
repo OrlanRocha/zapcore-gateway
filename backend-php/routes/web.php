@@ -6,6 +6,7 @@ use App\Controllers\InstanceController;
 use App\Controllers\MessageController;
 use App\Controllers\ProfileController;
 use App\Controllers\SetupController;
+use App\Controllers\StorageController;
 use App\Controllers\UserController;
 use App\Controllers\WebhookController;
 use App\Middlewares\AdminMiddleware;
@@ -33,6 +34,11 @@ $router->post('/users', [UserController::class, 'store'], [AuthMiddleware::class
 $router->get('/users/{id}/edit', [UserController::class, 'edit'], [AuthMiddleware::class, AdminMiddleware::class]);
 $router->post('/users/{id}', [UserController::class, 'update'], [AuthMiddleware::class, AdminMiddleware::class]);
 $router->post('/users/{id}/delete', [UserController::class, 'destroy'], [AuthMiddleware::class, AdminMiddleware::class]);
+
+$router->get('/storage', [StorageController::class, 'index'], [AuthMiddleware::class, AdminMiddleware::class]);
+$router->post('/storage/settings', [StorageController::class, 'settings'], [AuthMiddleware::class, AdminMiddleware::class]);
+$router->post('/storage/dry-run', [StorageController::class, 'dryRun'], [AuthMiddleware::class, AdminMiddleware::class]);
+$router->post('/storage/cleanup', [StorageController::class, 'cleanup'], [AuthMiddleware::class, AdminMiddleware::class]);
 
 $router->get('/instances', [InstanceController::class, 'index'], AuthMiddleware::class);
 $router->get('/instances/create', [InstanceController::class, 'create'], AuthMiddleware::class);

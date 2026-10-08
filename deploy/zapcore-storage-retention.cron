@@ -1,0 +1,1 @@
+*/5 * * * * www-data cd /opt/zapcore-gateway/backend-php && /usr/bin/php bin/storage-retention.php >> /var/log/zapcore-storage-retention.log 2>&1

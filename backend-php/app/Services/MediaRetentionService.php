@@ -33,6 +33,11 @@ final class MediaRetentionService
         return $selected;
     }
 
+    public static function shouldAdvanceSchedule(bool $dryRun): bool
+    {
+        return !$dryRun;
+    }
+
     public static function resolveDeletionPath(string $root, string $relativePath): ?string
     {
         if ($relativePath === '' || preg_match('#^(?:[A-Za-z]:|[/\\\\])#', $relativePath) || in_array('..', preg_split('#[/\\\\]+#', $relativePath), true)) return null;
@@ -105,7 +110,9 @@ final class MediaRetentionService
                 'bytes_deleted' => $deletedBytes, 'files_deleted' => $deletedFiles,
                 'status' => $status, 'error_summary' => $errors ? implode('; ', $errors) : null,
             ]);
-            $pdo->prepare('UPDATE storage_settings SET last_run_at=NOW(), last_run_status=:status WHERE id=1')->execute(['status' => $status]);
+            if (self::shouldAdvanceSchedule($dryRun)) {
+                $pdo->prepare('UPDATE storage_settings SET last_run_at=NOW(), last_run_status=:status WHERE id=1')->execute(['status' => $status]);
+            }
             return compact('status', 'required', 'selectedBytes', 'deletedBytes', 'deletedFiles') + ['files_selected' => count($selected), 'dry_run' => $dryRun];
         } catch (\Throwable $e) {
             if ($runId) StorageCleanupRun::finish($runId, ['bytes_after'=>0,'files_after'=>0,'bytes_selected'=>0,'files_selected'=>0,'bytes_deleted'=>0,'files_deleted'=>0,'status'=>'failed','error_summary'=>$e->getMessage()]);

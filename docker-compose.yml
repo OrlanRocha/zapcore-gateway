@@ -70,6 +70,24 @@ services:
       - zapcore_network
     command: npm run dev
 
+  storage-scheduler:
+    image: php:8.2-cli
+    container_name: zapcore_storage_scheduler
+    restart: always
+    working_dir: /var/www/html
+    volumes:
+      - ./backend-php:/var/www/html
+      - ./backend-php/storage/media:/var/www/html/storage/media
+    depends_on:
+      - mysql
+    networks:
+      - zapcore_network
+    command: >
+      bash -c "
+      docker-php-ext-install pdo pdo_mysql
+      && while true; do php bin/storage-retention.php; sleep 300; done
+      "
+
   redis:
     image: redis:7-alpine
     container_name: zapcore_redis

@@ -37,6 +37,17 @@ final class StorageSetting extends Model
         return $result + ['percent_threshold' => null, 'percent_target' => null, 'absolute_bytes' => $bytes];
     }
 
+    public static function isDue(array $settings, ?\DateTimeImmutable $now = null): bool
+    {
+        if (empty($settings['enabled'])) return false;
+        if (empty($settings['last_run_at'])) return true;
+
+        $interval = (int) ($settings['interval_minutes'] ?? 0);
+        if (!in_array($interval, self::INTERVALS, true)) return false;
+        $lastRun = new \DateTimeImmutable((string) $settings['last_run_at']);
+        return $lastRun->modify("+{$interval} minutes") <= ($now ?? new \DateTimeImmutable());
+    }
+
     public static function save(array $settings, ?int $userId): void
     {
         $settings = self::validate($settings);

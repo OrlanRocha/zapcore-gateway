@@ -49,4 +49,10 @@ final class MediaRetentionServiceTest extends TestCase
             @unlink($root . '/inside.bin'); @rmdir($root);
         }
     }
+
+    public function test_dry_run_does_not_advance_the_automatic_schedule(): void
+    {
+        $this->assertFalse(MediaRetentionService::shouldAdvanceSchedule(true));
+        $this->assertTrue(MediaRetentionService::shouldAdvanceSchedule(false));
+    }
 }

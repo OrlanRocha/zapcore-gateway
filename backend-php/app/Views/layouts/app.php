@@ -53,7 +53,7 @@ $appVersion = is_file($versionFile) ? trim((string) file_get_contents($versionFi
     <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="/css/style.css" rel="stylesheet">
+    <link href="/css/style.css?v=<?= rawurlencode($appVersion) ?>" rel="stylesheet">
 </head>
 <body class="<?= $isAuthenticated && !$usePublicShell ? 'app-screen' : 'login-screen' ?>">
     <?php if ($isAuthenticated && !$usePublicShell): ?>
@@ -66,6 +66,7 @@ $appVersion = is_file($versionFile) ? trim((string) file_get_contents($versionFi
                 <a href="/instances" class="<?= strpos($_SERVER['REQUEST_URI'], '/instances') === 0 ? 'active' : '' ?>">Instancias</a>
                 <?php if ($authUser && $authUser->role === 'admin'): ?>
                     <a href="/users" class="<?= strpos($_SERVER['REQUEST_URI'], '/users') === 0 ? 'active' : '' ?>">Usuarios</a>
+                    <a href="/storage" class="<?= strpos($_SERVER['REQUEST_URI'], '/storage') === 0 ? 'active' : '' ?>">Armazenamento</a>
                 <?php endif; ?>
             </nav>
         </div>

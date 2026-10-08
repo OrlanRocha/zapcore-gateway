@@ -690,3 +690,56 @@ h1, h2, h3, h4, h5, h6 {
 @keyframes chat-message-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 768px) { .instance-chat-drawer { width: 100vw !important; } .chat-bubble { max-width: 90%; } .chat-contacts { width: 38%; min-width: 125px; } .chat-contact-item { padding: .65rem .4rem; } .chat-contact-item time { display: none; } .chat-composer-modes { grid-template-columns: repeat(5, minmax(52px, 1fr)); overflow-x: auto; padding-bottom: .2rem; } .chat-mode { height: 44px; flex-direction: column; gap: .12rem; } .chat-media-dropzone { grid-template-columns: 26px minmax(0, 1fr); } .chat-file-action { display: none; } }
 @media (prefers-reduced-motion: reduce) { .chat-message-row { animation: none; } }
+
+.storage-page { max-width: 1440px; margin: 0 auto; color: #17212b; }
+.storage-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 2rem; margin-bottom: 1.5rem; }
+.storage-heading h2 { margin: 0; font-size: 1.85rem; letter-spacing: 0; }
+.storage-heading p { margin: .3rem 0 0; color: #667680; }
+.storage-eyebrow { color: #1f7a5b !important; font-size: .72rem; font-weight: 800; text-transform: uppercase; }
+.storage-schedule-state { display: inline-flex; align-items: center; gap: .5rem; padding: .6rem .8rem; border: 1px solid #d6dde2; border-radius: 6px; background: #fff; color: #6b7780; font-size: .78rem; font-weight: 700; white-space: nowrap; }
+.storage-schedule-state.is-active { color: #176b4c; border-color: #acd8c5; background: #edf8f3; }
+.storage-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid #dce2e6; border-radius: 8px; background: #fff; margin-bottom: 1.2rem; overflow: hidden; }
+.storage-metrics > div { min-width: 0; padding: 1rem 1.15rem; border-right: 1px solid #e5e9ec; }
+.storage-metrics > div:last-child { border-right: 0; }
+.storage-metrics span, .storage-metrics small { display: block; color: #71808b; font-size: .7rem; }
+.storage-metrics strong { display: block; margin: .22rem 0; font-size: 1.25rem; overflow-wrap: anywhere; }
+.storage-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: 1.2rem; }
+.storage-layout > * { min-width: 0; }
+.storage-settings, .storage-actions, .storage-history { background: #fff; border: 1px solid #dce2e6; border-radius: 8px; padding: 1.2rem; }
+.storage-section-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+.storage-section-title > div { min-width: 0; }
+.storage-section-title h3 { margin: 0; font-size: 1rem; }
+.storage-section-title p { margin: .22rem 0 0; color: #75828c; font-size: .75rem; }
+.storage-section-title > i { color: #6b7a84; }
+.storage-toggle { display: flex; align-items: center; gap: .65rem; margin-bottom: 1rem; cursor: pointer; }
+.storage-toggle input { position: absolute; opacity: 0; }
+.storage-toggle span { width: 38px; height: 22px; border-radius: 11px; background: #bbc5cb; position: relative; transition: background .15s; }
+.storage-toggle span::after { content: ''; position: absolute; width: 16px; height: 16px; top: 3px; left: 3px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.storage-toggle input:checked + span { background: #1f7a5b; }
+.storage-toggle input:checked + span::after { transform: translateX(16px); }
+.storage-toggle strong, .storage-label, .storage-field, .storage-mode-fields label { font-size: .78rem; font-weight: 700; }
+.storage-segmented { display: inline-grid; grid-template-columns: 1fr 1fr; margin-top: .4rem; border: 1px solid #d7dee3; border-radius: 6px; overflow: hidden; }
+.storage-segmented input { position: absolute; opacity: 0; }
+.storage-segmented span { display: block; min-width: 0; padding: .6rem .85rem; color: #65747e; background: #fff; cursor: pointer; font-size: .75rem; overflow-wrap: anywhere; }
+.storage-segmented label + label span { border-left: 1px solid #d7dee3; }
+.storage-segmented input:checked + span { color: #fff; background: #17212b; }
+.storage-field { display: block; margin: 1rem 0; }
+.storage-field > select { margin-top: .4rem; max-width: 260px; }
+.storage-mode-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 220px)); gap: .75rem; margin-top: 1rem; }
+.storage-mode-fields[hidden] { display: none; }
+.storage-mode-fields input, .storage-mode-fields select { margin-top: .4rem; }
+.storage-actions { display: flex; flex-direction: column; gap: .65rem; }
+.storage-actions .storage-section-title { margin-bottom: .35rem; }
+.storage-action-result { padding: .7rem; border-left: 3px solid #1f7a5b; background: #edf8f3; color: #275b49; font-size: .75rem; }
+.storage-last-status { margin: .35rem 0 0; padding-top: .75rem; border-top: 1px solid #e5e9ec; }
+.storage-last-status div { margin-bottom: .65rem; }
+.storage-last-status dt { color: #7a8790; font-size: .67rem; text-transform: uppercase; }
+.storage-last-status dd { margin: .12rem 0 0; font-size: .75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.storage-history { margin-top: 1.2rem; padding-bottom: .35rem; }
+.storage-history th { color: #71808b; font-size: .67rem; text-transform: uppercase; white-space: nowrap; }
+.storage-history td { font-size: .75rem; white-space: nowrap; }
+.storage-status { display: inline-block; padding: .24rem .45rem; border-radius: 5px; background: #e9edf0; color: #4b5963; font-size: .66rem; font-weight: 800; }
+.storage-status-completed { background: #e6f5ee; color: #176b4c; }
+.storage-status-failed, .storage-status-partial { background: #fdecec; color: #a82c35; }
+@media (max-width: 900px) { .storage-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .storage-metrics > div:nth-child(2) { border-right: 0; } .storage-metrics > div:nth-child(-n+2) { border-bottom: 1px solid #e5e9ec; } .storage-layout { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .storage-heading { flex-direction: column; gap: .8rem; } .storage-heading h2 { font-size: 1.45rem; } .storage-metrics { grid-template-columns: 1fr; } .storage-metrics > div { border-right: 0; border-bottom: 1px solid #e5e9ec; } .storage-metrics > div:last-child { border-bottom: 0; } .storage-mode-fields { grid-template-columns: 1fr; } .storage-segmented { width: 100%; } .storage-segmented span { height: 100%; padding: .55rem .45rem; text-align: center; } }
