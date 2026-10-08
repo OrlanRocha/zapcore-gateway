@@ -46,6 +46,7 @@ services:
       - ./backend-php/database/first_login_setup.sql:/docker-entrypoint-initdb.d/3_first_login_setup.sql
       - ./backend-php/database/chat_type_migration.sql:/docker-entrypoint-initdb.d/4_chat_type_migration.sql
       - ./backend-php/database/performance_indexes.sql:/docker-entrypoint-initdb.d/5_performance_indexes.sql
+      - ./backend-php/database/storage_retention_migration.sql:/docker-entrypoint-initdb.d/6_storage_retention_migration.sql
     networks:
       - zapcore_network
 

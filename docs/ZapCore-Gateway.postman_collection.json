@@ -237,7 +237,7 @@
           }
         },
         {
-          "name": "Enviar midia - usuario",
+          "name": "Enviar midia por URL - usuario",
           "event": [
             {
               "listen": "test",
@@ -264,6 +264,44 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"instance_uuid\": \"{{instance_uuid}}\",\n  \"chat_type\": \"user\",\n  \"to\": \"{{phone_number}}\",\n  \"media_type\": \"image\",\n  \"media_url\": \"{{media_url}}\",\n  \"caption\": \"Imagem de teste\"\n}"
+            },
+            "url": "{{base_url}}/api/messages/media"
+          }
+        },
+        {
+          "name": "Upload de imagem - usuario",
+          "request": {
+            "description": "Envia um arquivo local no campo media. Limite da aplicacao: 256 MiB. Um corpo acima do limite do proxy/PHP retorna 413; combinacao invalida de campos ou MIME retorna 422.",
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "instance_uuid", "value": "{{instance_uuid}}", "type": "text" },
+                { "key": "chat_type", "value": "user", "type": "text" },
+                { "key": "to", "value": "{{phone_number}}", "type": "text" },
+                { "key": "media_type", "value": "image", "type": "text" },
+                { "key": "caption", "value": "Imagem enviada por upload", "type": "text" },
+                { "key": "media", "type": "file", "src": [] }
+              ]
+            },
+            "url": "{{base_url}}/api/messages/media"
+          }
+        },
+        {
+          "name": "Upload de documento - usuario",
+          "request": {
+            "description": "Selecione um documento local no campo media. Nao envie media_url junto: upload e URL sao alternativas exclusivas.",
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "instance_uuid", "value": "{{instance_uuid}}", "type": "text" },
+                { "key": "chat_type", "value": "user", "type": "text" },
+                { "key": "to", "value": "{{phone_number}}", "type": "text" },
+                { "key": "media_type", "value": "document", "type": "text" },
+                { "key": "caption", "value": "Documento enviado por upload", "type": "text" },
+                { "key": "media", "type": "file", "src": [] }
+              ]
             },
             "url": "{{base_url}}/api/messages/media"
           }

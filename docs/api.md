@@ -222,6 +222,20 @@ palavras configuradas pelo sistema. A revogacao cancela mensagens ainda pendente
 
 ### Enviar midia
 
+Upload local multipart:
+
+```http
+POST /api/messages/media
+Authorization: Bearer SEU_TOKEN
+Content-Type: multipart/form-data
+```
+
+Campos: `instance_uuid`, `chat_type`, `to`, `media_type`, `caption` opcional e
+o arquivo no campo `media`. A aplicacao aceita no maximo **256 MiB**
+(268.435.456 bytes). Configure o Nginx com `client_max_body_size 260M`.
+
+O envio por URL continua disponivel:
+
 ```http
 POST /api/messages/media
 Content-Type: application/json
@@ -238,7 +252,14 @@ Content-Type: application/json
 }
 ```
 
-`media_type` aceita `image`, `audio`, `video` e `document`. A `media_url` precisa ser uma URL publica real, acessivel pelo servidor, com tipo de conteudo compativel.
+`media_type` aceita `image`, `audio`, `video` e `document`. Use `media` ou
+`media_url`, nunca ambos. A URL precisa ser publica e acessivel pelo worker.
+
+Erros relevantes:
+
+- `413`: corpo excedeu o limite do proxy ou do PHP.
+- `422`: arquivo ausente, acima de 256 MiB, MIME/tipo incompatível ou duas fontes.
+- `410`: o arquivo existia, mas foi removido pela politica de retencao; a mensagem permanece.
 
 ### Mídia recebida
 

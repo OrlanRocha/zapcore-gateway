@@ -248,6 +248,27 @@ curl "http://localhost:8080/api/messages?instance_uuid=UUID_DA_INSTANCIA&chat_ty
 
 ## Enviar midia via API
 
+Por upload local (sem URL):
+
+```bash
+curl -X POST http://localhost:8080/api/messages/media \
+  -H "Authorization: Bearer dev_zapcore_token" \
+  -F "instance_uuid=UUID_DA_INSTANCIA" \
+  -F "chat_type=user" \
+  -F "to=5511999999999" \
+  -F "media_type=image" \
+  -F "caption=Imagem de teste" \
+  -F "media=@./imagem.jpg"
+```
+
+O campo de arquivo e `media`. O limite exato da aplicacao e **256 MiB**
+(268.435.456 bytes). O proxy deve aceitar `260M`; no Nginx use
+`client_max_body_size 260M`. Corpos recusados antes do PHP retornam `413`.
+Arquivo ausente, MIME incompatível, tipo inválido ou envio simultâneo de
+`media` e `media_url` retorna `422`.
+
+Por URL publica, mantido para compatibilidade:
+
 ```bash
 curl -X POST http://localhost:8080/api/messages/media \
   -H "Authorization: Bearer dev_zapcore_token" \
@@ -262,9 +283,26 @@ curl -X POST http://localhost:8080/api/messages/media \
   }'
 ```
 
-`media_type` aceita `image`, `audio`, `video` e `document`. A `media_url` precisa apontar para um arquivo publico real, acessivel pelo servidor.
+`media_type` aceita `image`, `audio`, `video` e `document`. Envie exatamente uma
+fonte: o arquivo `media` ou `media_url`. A URL precisa apontar para um arquivo
+publico real, acessivel pelo worker.
 
 Mensagens recebidas com imagem, figurinha, audio, video ou documento sao baixadas pelo worker e salvas em `backend-php/storage/media`. A listagem de mensagens retorna `media_url` quando houver anexo. Use `GET /api/messages/{message_id}/media` com o mesmo Bearer token para visualizar ou baixar o arquivo.
+
+Quando a retencao remove um arquivo antigo, a mensagem continua no historico e
+o endpoint do anexo responde `410 Gone`.
+
+## Armazenamento e retencao
+
+Administradores configuram em `/storage` a limpeza automatica mais antiga
+primeiro. No modo percentual, a limpeza inicia no limite da particao e segue ate
+o percentual seguro configurado. No modo MB/GB, somente o tamanho da pasta de
+midias e considerado e nao existe percentual seguro adicional.
+
+O comando `backend-php/bin/storage-retention.php` deve ser chamado a cada cinco
+minutos; ele respeita habilitacao e intervalo salvos no painel. Simulacoes geram
+auditoria sem excluir arquivos nem adiar o cron. A rotina preserva mensagens,
+ignora midias ainda pendentes/em processamento e marca anexos removidos.
 
 O worker usa uma versao corrigida do Baileys e tenta renovar automaticamente URLs
 de midia expiradas antes de desistir do download.

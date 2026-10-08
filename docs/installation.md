@@ -42,6 +42,7 @@ O MySQL importa automaticamente:
 - `backend-php/database/first_login_setup.sql`
 - `backend-php/database/chat_type_migration.sql`
 - `backend-php/database/performance_indexes.sql`
+- `backend-php/database/storage_retention_migration.sql`
 
 ## Instalacao sem Docker
 
@@ -105,6 +106,12 @@ mysql -u zapcore -p zapcore_gateway < database/chat_type_migration.sql
 mysql -u zapcore -p zapcore_gateway < database/performance_indexes.sql
 ```
 
+Para habilitar upload local e retencao em um banco existente, aplique:
+
+```bash
+mysql -u zapcore -p zapcore_gateway < database/storage_retention_migration.sql
+```
+
 Inicie o PHP apontando para `backend-php/public`:
 
 ```bash
@@ -112,6 +119,15 @@ php -S 127.0.0.1:8080 -t public
 ```
 
 Em Apache/Nginx, configure o document root para `backend-php/public`.
+
+Uploads usam limite de **256 MiB** na aplicacao. O `php.ini` do projeto define
+`upload_max_filesize=256M` e `post_max_size=260M`. No virtual host Nginx:
+
+```nginx
+client_max_body_size 260M;
+```
+
+Sem esse ajuste, o Nginx responde `413` antes de a aplicacao validar o arquivo.
 
 ### 3. Configurar worker Node.js
 
@@ -213,6 +229,27 @@ curl -X POST http://localhost:8080/api/messages/text \
 Use `chat_type=user` para contatos individuais. Para grupos use o JID completo com `@g.us`; para newsletter/canal use o JID completo com `@newsletter`.
 
 ## Manutencao
+
+### Retencao automatica de midias
+
+O painel `/storage` e exclusivo de administradores. Ele exibe uso da particao,
+tamanho da pasta de midias, historico, simulacao e limpeza manual. O modo
+percentual usa limite e alvo seguro da particao; o modo absoluto limita apenas a
+pasta em MB/GB e, por seguranca sem ambiguidade, nao usa percentual alvo.
+
+No Docker, o servico `storage-scheduler` consulta a configuracao a cada cinco
+minutos. Em uma instalacao nativa, instale `deploy/zapcore-storage-retention.cron`
+em `/etc/cron.d/zapcore-storage-retention` e garanta acesso de escrita do usuario
+`www-data` a `backend-php/storage/media` e ao log. O comando executado e:
+
+```bash
+cd /opt/zapcore-gateway/backend-php
+php bin/storage-retention.php
+```
+
+Codigos de saida: `0` para concluido ou sem necessidade, `2` quando outra limpeza
+detem o lock e `1` para falha. A limpeza remove somente arquivos mais antigos,
+preserva as mensagens e faz o endpoint de uma midia removida responder `410`.
 
 Com Docker:
 
