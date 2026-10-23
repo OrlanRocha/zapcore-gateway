@@ -80,6 +80,12 @@ WORKER_URL=http://127.0.0.1:3333
 WORKER_SECRET=change_worker_secret
 ```
 
+O host PHP precisa das extensoes `curl` e `fileinfo`. O envio por `media_url`
+faz o download no backend antes de enfileirar, com limite de 16 MiB e arquivos
+temporarios dentro de `storage/media/.tmp`. Garanta permissao de escrita para o
+usuario do PHP em `storage/media`; proxies definidos no ambiente nao sao usados
+por esse cliente de seguranca.
+
 Importe o schema e o seed:
 
 ```bash

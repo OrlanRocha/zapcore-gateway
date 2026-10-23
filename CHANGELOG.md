@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Security
+
+- Bloqueia SSRF em webhooks com validacao A/AAAA, DNS pinning, recusa de
+  redirecionamentos e logs de resposta limitados, sanitizados e retidos.
+- Materializa midia remota no PHP com validacao por salto, streaming limitado a
+  16 MiB e MIME verificado antes da fila.
+- Impede o worker de baixar URLs remotas presentes em filas legadas ou payloads
+  manipulados.
+- Atualiza `follow-redirects` e `music-metadata` para versoes sem os alertas da
+  auditoria npm vigente.
+
 Todas as alteracoes relevantes deste projeto serao documentadas neste arquivo.
 O formato segue Keep a Changelog e o projeto usa Versionamento Semantico.
 

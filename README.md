@@ -284,8 +284,15 @@ curl -X POST http://localhost:8080/api/messages/media \
 ```
 
 `media_type` aceita `image`, `audio`, `video` e `document`. Envie exatamente uma
-fonte: o arquivo `media` ou `media_url`. A URL precisa apontar para um arquivo
-publico real, acessivel pelo worker.
+fonte: o arquivo `media` ou `media_url`. URLs remotas aceitam somente HTTP/HTTPS
+publico, ate **16 MiB**, com no maximo tres redirecionamentos. Cada destino e
+resolvido e validado novamente, a conexao fica presa ao IP aprovado e redes
+locais, privadas, reservadas e de metadados sao bloqueadas. O PHP baixa e valida
+o arquivo antes de criar a fila; o worker recebe somente a copia local.
+
+Itens antigos de fila que ainda contenham uma URL remota nao sao baixados. Eles
+sao marcados como falha permanente com orientacao para reenviar a mensagem,
+evitando acesso inseguro ou descarte silencioso.
 
 Mensagens recebidas com imagem, figurinha, audio, video ou documento sao baixadas pelo worker e salvas em `backend-php/storage/media`. A listagem de mensagens retorna `media_url` quando houver anexo. Use `GET /api/messages/{message_id}/media` com o mesmo Bearer token para visualizar ou baixar o arquivo.
 
@@ -397,6 +404,13 @@ A assinatura HMAC SHA256 e enviada no header:
 X-ZapCore-Signature
 ```
 
+Webhooks aceitam somente destinos HTTP/HTTPS publicos. DNS A e AAAA sao
+validados no cadastro e novamente em cada disparo; a conexao usa DNS pinning e
+redirecionamentos sao recusados. Respostas textuais de endpoints autorizados sao
+sanitizadas e limitadas a 4 KiB nos logs; respostas binarias e corpos de
+requisicoes bloqueadas nao sao armazenados. Logs expiram em 30 dias e tambem
+sao limitados aos 1.000 registros mais recentes por webhook.
+
 ## Seguranca
 
 - Senhas usam `password_hash`.
@@ -416,7 +430,10 @@ X-ZapCore-Signature
 
 - Baileys usa WhatsApp Web e nao e API oficial.
 - Mudancas no WhatsApp Web podem exigir ajuste do worker.
-- Midia remota depende de URLs acessiveis pelo worker.
+- Midia remota e materializada pelo PHP no recebimento da solicitacao; uma
+  indisponibilidade nesse momento faz a API recusar o enfileiramento.
+- Downloads de midia recebida continuam sob o fluxo autenticado do Baileys e
+  dependem das garantias da biblioteca e do protocolo do WhatsApp.
 - O worker atual processa fila por polling simples.
 - Redis esta no Compose como opcional, mas a fila principal do MVP usa MySQL.
 

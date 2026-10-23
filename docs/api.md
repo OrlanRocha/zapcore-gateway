@@ -253,7 +253,15 @@ Content-Type: application/json
 ```
 
 `media_type` aceita `image`, `audio`, `video` e `document`. Use `media` ou
-`media_url`, nunca ambos. A URL precisa ser publica e acessivel pelo worker.
+`media_url`, nunca ambos. Uma URL remota deve usar HTTP/HTTPS publico e pode
+ter no maximo **16 MiB**. O backend valida todos os enderecos DNS A/AAAA,
+bloqueia redes nao publicas, fixa a resolucao na conexao e revalida ate tres
+redirecionamentos. O download e a validacao de MIME acontecem antes da criacao
+da fila; por isso, falhas remotas retornam imediatamente e nao geram mensagem.
+
+Filas criadas por versoes antigas que contenham URL remota sao recusadas pelo
+worker como falha permanente. Reenvie a solicitacao para que a midia seja
+baixada e armazenada pelo fluxo protegido.
 
 Erros relevantes:
 
@@ -333,6 +341,12 @@ Cada webhook pertence a uma instancia. A assinatura HMAC SHA256 e enviada em:
 ```text
 X-ZapCore-Signature
 ```
+
+A URL e validada no cadastro e em cada entrega. Somente HTTP/HTTPS publico e
+permitido, a conexao usa DNS pinning e redirecionamentos sao bloqueados. O corpo
+textual da resposta e sanitizado e limitado a 4 KiB; respostas binarias ou de
+destinos bloqueados nao sao armazenadas. A retencao e de 30 dias e 1.000 logs
+por webhook.
 
 ### Listar logs de webhook
 
