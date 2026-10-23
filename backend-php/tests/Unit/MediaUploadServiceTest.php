@@ -40,7 +40,12 @@ final class MediaUploadServiceTest extends TestCase
         $pdf = $this->file('file.pdf', "%PDF-1.4\n%%EOF");
         foreach ([
             fn() => $this->service()->store($this->upload($pdf, 'file.pdf'), 1, 'image'),
-            fn() => $this->service()->store($this->upload($this->file('run.exe', "MZ\0\0"), 'run.exe'), 1, 'document'),
+            fn() => $this->service()->store($this->upload($this->file('run.exe', hex2bin(
+                '4d5a90000300000004000000ffff0000b8000000000000004000000000000000' .
+                '0000000000000000000000000000000000000000000000000000000080000000' .
+                '0e1fba0e00b409cd21b8014ccd21546869732070726f6772616d2063616e6e6f74' .
+                '2062652072756e20696e20444f53206d6f64652e0d0d0a24'
+            )), 'run.exe'), 1, 'document'),
             fn() => $this->service()->store(['error' => UPLOAD_ERR_PARTIAL], 1, 'document'),
             fn() => $this->service()->store($this->upload($this->file('empty', ''), 'empty.txt'), 1, 'document'),
         ] as $operation) {
