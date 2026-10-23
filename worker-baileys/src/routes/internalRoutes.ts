@@ -68,7 +68,7 @@ internalRoutes.post('/worker/messages/send', async (req, res) => {
     }
 
     try {
-        const { jid, payload } = MessageService.buildOutgoingPayload(req.body);
+        const { jid, payload } = await MessageService.resolveOutgoingPayload(req.body, config.mediaStoragePath);
         const sent = await sock.sendMessage(jid, payload);
         res.json({
             success: true,

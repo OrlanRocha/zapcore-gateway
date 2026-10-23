@@ -1,5 +1,6 @@
 import { AnyMessageContent } from '@whiskeysockets/baileys';
 import { ChatType, toWhatsappJid } from '../utils/jid';
+import { resolveLocalMedia } from '../media/LocalMediaResolver';
 
 export type SendMessagePayload = {
     to: string;
@@ -19,5 +20,13 @@ export class MessageService {
             return { jid, payload: { text: input.text.trim() } };
         }
         throw new Error('A text or payload field is required');
+    }
+
+    static async resolveOutgoingPayload(input: SendMessagePayload, storageRoot: string): Promise<{ jid: string; payload: AnyMessageContent }> {
+        const outgoing = this.buildOutgoingPayload(input);
+        return {
+            jid: outgoing.jid,
+            payload: await resolveLocalMedia(outgoing.payload, storageRoot)
+        };
     }
 }
