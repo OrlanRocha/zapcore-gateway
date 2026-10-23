@@ -16,6 +16,8 @@ use App\Services\MediaUploadException;
 use App\Services\MediaUploadService;
 use App\Services\QueueService;
 use App\Services\WebhookDispatcher;
+use App\Services\Network\PublicUrlException;
+use App\Services\Network\PublicUrlPolicy;
 
 class ApiController extends Controller
 {
@@ -399,6 +401,11 @@ class ApiController extends Controller
 
         if ($name === '' || !filter_var($url, FILTER_VALIDATE_URL)) {
             return $response->error('Valid name and url are required', 422);
+        }
+        try {
+            (new PublicUrlPolicy())->resolve($url);
+        } catch (PublicUrlException) {
+            return $response->error('Webhook URL is blocked by the network security policy', 422);
         }
 
         if (is_string($events)) {
