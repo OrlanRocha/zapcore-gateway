@@ -12,9 +12,30 @@ async function fixture() {
     return { root, mediaDir, clean: () => rm(root, { recursive: true, force: true }) };
 }
 
-test('passes remote URL payloads through unchanged', async () => {
-    const payload = { image: { url: 'https://cdn.example.org/photo.jpg' }, caption: 'hello' };
-    assert.equal(await resolveLocalMedia(payload, 'unused'), payload);
+for (const mediaType of ['image', 'audio', 'video', 'document'] as const) {
+    test(`rejects legacy remote ${mediaType} payloads at the Baileys consumption boundary`, async () => {
+        const payload = { [mediaType]: { url: 'https://cdn.example.org/file' } };
+        await assert.rejects(
+            () => resolveLocalMedia(payload, 'unused'),
+            (error: any) => error?.code === 'UNSAFE_REMOTE_MEDIA' && !String(error.message).includes('cdn.example.org')
+        );
+    });
+}
+
+test('rejects a manipulated payload containing local media and a remote URL', async () => {
+    const fs = await fixture();
+    try {
+        await writeFile(path.join(fs.mediaDir, 'photo.jpg'), Buffer.from('image-data'));
+        await assert.rejects(
+            () => resolveLocalMedia({
+                local_media_path: 'outgoing/1/2026-10/photo.jpg', media_type: 'image',
+                image: { url: 'https://cdn.example.org/file' }
+            }, fs.root),
+            (error: any) => error?.code === 'UNSAFE_REMOTE_MEDIA'
+        );
+    } finally {
+        await fs.clean();
+    }
 });
 
 test('resolves local image and document payloads', async () => {
