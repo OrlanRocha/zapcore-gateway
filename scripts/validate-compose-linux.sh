@@ -7,9 +7,15 @@ secret_dir="$(mktemp -d)"
 rendered="$(mktemp)"
 
 cleanup() {
+  status=$?
+  if [ "$status" -ne 0 ]; then
+    docker compose -p "$project" --profile redis ps -a || true
+    docker compose -p "$project" --profile redis logs --no-color --tail 100 || true
+  fi
   docker compose -p "$project" --profile redis down -v --remove-orphans || true
   rm -rf "$secret_dir"
   rm -f "$rendered"
+  return "$status"
 }
 trap cleanup EXIT
 

@@ -106,6 +106,7 @@ test('PHP services use prebuilt images with database extensions', () => {
 
 test('redis is optional and requires its read-only ACL secret', () => {
   const redis = compose().services.redis
+  const entrypoint = readFileSync(join(repositoryRoot, 'docker', 'redis-entrypoint.sh'), 'utf8')
 
   assert.deepEqual(redis.profiles, ['redis'])
   assert.deepEqual(redis.entrypoint, ['/bin/sh', '/usr/local/bin/zapcore-redis-entrypoint.sh'])
@@ -113,6 +114,10 @@ test('redis is optional and requires its read-only ACL secret', () => {
   const secret = redis.secrets?.find((entry) => entry.source === 'redis_acl')
   assert.equal(secret?.target, 'redis_acl')
   assert.equal(secret?.mode, 0o440)
+  assert.doesNotMatch(entrypoint, /^install /m)
+  assert.match(entrypoint, /^cp /m)
+  assert.match(entrypoint, /^chown redis:redis /m)
+  assert.match(entrypoint, /^chmod 0400 /m)
 })
 
 test('administrative MySQL override binds only to loopback', () => {

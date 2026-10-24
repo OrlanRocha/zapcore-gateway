@@ -9,5 +9,7 @@ if [ ! -f "$source_acl" ] || [ ! -r "$source_acl" ] || [ ! -s "$source_acl" ]; t
   exit 1
 fi
 
-install -o redis -g redis -m 0400 "$source_acl" "$runtime_acl"
+cp "$source_acl" "$runtime_acl"
+chown redis:redis "$runtime_acl"
+chmod 0400 "$runtime_acl"
 exec su-exec redis redis-server --aclfile "$runtime_acl"
