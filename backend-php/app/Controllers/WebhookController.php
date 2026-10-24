@@ -9,6 +9,8 @@ use App\Core\App;
 use App\Core\Auth;
 use App\Models\Instance;
 use App\Models\Webhook;
+use App\Services\Network\PublicUrlException;
+use App\Services\Network\PublicUrlPolicy;
 
 class WebhookController extends Controller
 {
@@ -70,6 +72,11 @@ class WebhookController extends Controller
         $name = trim($body['name'] ?? '');
         $url = trim($body['url'] ?? '');
         if ($name === '' || !filter_var($url, FILTER_VALIDATE_URL) || !$events) {
+            return $response->redirect("/instances/{$instance->id}/webhooks");
+        }
+        try {
+            (new PublicUrlPolicy())->resolve($url);
+        } catch (PublicUrlException) {
             return $response->redirect("/instances/{$instance->id}/webhooks");
         }
 

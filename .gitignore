@@ -2,6 +2,9 @@ node_modules/
 dist/
 vendor/
 .env
+secrets/*
+!secrets/examples/
+!secrets/examples/*.example
 *.log
 backend-php/storage/logs/*
 !backend-php/storage/logs/.gitkeep

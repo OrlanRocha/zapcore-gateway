@@ -14,11 +14,11 @@ class App
         $this->router = $router;
         
         $this->db = new Database([
-            'host' => $_ENV['DB_HOST'] ?? '127.0.0.1',
-            'port' => $_ENV['DB_PORT'] ?? '3306',
-            'database' => $_ENV['DB_DATABASE'] ?? '',
-            'user' => $_ENV['DB_USERNAME'] ?? '',
-            'password' => $_ENV['DB_PASSWORD'] ?? ''
+            'host' => Environment::required('DB_HOST'),
+            'port' => Environment::required('DB_PORT'),
+            'database' => Environment::required('DB_DATABASE'),
+            'user' => Environment::required('DB_USERNAME'),
+            'password' => Environment::secret('DB_PASSWORD')
         ]);
     }
 

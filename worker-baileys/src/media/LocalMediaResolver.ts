@@ -15,6 +15,11 @@ export type QueueMediaPayload = Record<string, unknown> & {
 export type ResolvedMediaPayload = AnyMessageContent;
 
 export async function resolveLocalMedia(payload: QueueMediaPayload, storageRoot: string): Promise<ResolvedMediaPayload> {
+    if (containsRemoteMediaUrl(payload)) {
+        const error: NodeJS.ErrnoException = new Error('Legacy remote media is blocked; submit the message again');
+        error.code = 'UNSAFE_REMOTE_MEDIA';
+        throw error;
+    }
     if (!payload.local_media_path) return payload as AnyMessageContent;
 
     const relativePath = payload.local_media_path;
@@ -59,4 +64,14 @@ export async function resolveLocalMedia(payload: QueueMediaPayload, storageRoot:
         };
         default: throw new Error('Invalid local media type');
     }
+}
+
+function containsRemoteMediaUrl(payload: QueueMediaPayload): boolean {
+    for (const mediaType of ['image', 'audio', 'video', 'document']) {
+        const media = payload[mediaType];
+        if (media && typeof media === 'object' && typeof (media as Record<string, unknown>).url === 'string') {
+            return true;
+        }
+    }
+    return false;
 }

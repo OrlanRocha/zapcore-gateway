@@ -1,0 +1,15 @@
+FROM composer:2 AS vendor
+
+WORKDIR /app
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-interaction --no-progress --prefer-dist
+
+FROM php:8.2-cli
+
+RUN docker-php-ext-install pdo_mysql
+
+WORKDIR /var/www/html
+COPY --from=vendor /app/vendor ./vendor
+COPY . .
+
+CMD ["sh", "-c", "while true; do if php bin/storage-retention.php; then touch /tmp/storage-scheduler-healthy; else rm -f /tmp/storage-scheduler-healthy; fi; sleep 300; done"]

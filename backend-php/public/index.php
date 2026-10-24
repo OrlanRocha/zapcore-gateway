@@ -4,12 +4,14 @@ require_once __DIR__ . '/../vendor/autoload.php';
 
 use Dotenv\Dotenv;
 use App\Core\App;
+use App\Core\Environment;
 use App\Core\Router;
 
 session_start();
 
 $dotenv = Dotenv::createImmutable(__DIR__ . '/..');
-$dotenv->load();
+$dotenv->safeLoad();
+Environment::hydrateSecrets(['APP_KEY', 'INTERNAL_SECRET', 'WORKER_SECRET']);
 
 $router = new Router();
 

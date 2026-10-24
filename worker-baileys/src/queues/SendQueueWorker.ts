@@ -207,8 +207,8 @@ export class SendQueueWorker {
         }
     }
 
-    private static isPermanentFailure(error: any): boolean {
-        if (error?.code === 'CONSENT_REQUIRED') return true;
+    public static isPermanentFailure(error: any): boolean {
+        if (error?.code === 'CONSENT_REQUIRED' || error?.code === 'UNSAFE_REMOTE_MEDIA') return true;
         const status = Number(error?.response?.status || error?.output?.statusCode || 0);
         return status >= 400 && status < 500 && status !== 408 && status !== 429;
     }

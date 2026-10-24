@@ -89,6 +89,52 @@ final class MediaUploadService
         if ($real !== false && str_starts_with($real, $root . DIRECTORY_SEPARATOR) && is_file($real)) unlink($real);
     }
 
+    public function createTemporaryFile(): string
+    {
+        $directory = $this->root() . DIRECTORY_SEPARATOR . '.tmp';
+        if (!is_dir($directory) && !mkdir($directory, 0770, true) && !is_dir($directory)) {
+            throw new \RuntimeException('Unable to create temporary media directory');
+        }
+        $path = tempnam($directory, 'remote-');
+        if ($path === false) {
+            throw new \RuntimeException('Unable to create temporary media file');
+        }
+        return $path;
+    }
+
+    public function storeLocalFile(
+        string $source,
+        int $instanceId,
+        string $mediaType,
+        string $displayName,
+        int $maxBytes = self::MAX_BYTES,
+    ): StoredMedia {
+        if (!is_file($source)) throw new MediaUploadException('Invalid or empty media file');
+        $size = (int) filesize($source);
+        if ($size <= 0) throw new MediaUploadException('Invalid or empty media file');
+        if ($size > $maxBytes) throw new MediaUploadException('Media file is too large', 413);
+
+        $mediaType = strtolower(trim($mediaType));
+        if (!isset(self::MIME_BY_TYPE[$mediaType])) throw new MediaUploadException('Invalid media_type');
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($source) ?: 'application/octet-stream';
+        if (!in_array($mime, self::MIME_BY_TYPE[$mediaType], true)) {
+            throw new MediaUploadException("Media file type does not match {$mediaType}");
+        }
+
+        $root = $this->root();
+        $relativeDir = 'outgoing/' . max(1, $instanceId) . '/' . date('Y-m');
+        $targetDir = $root . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relativeDir);
+        if (!is_dir($targetDir) && !mkdir($targetDir, 0770, true) && !is_dir($targetDir)) {
+            throw new \RuntimeException('Unable to create media storage directory');
+        }
+        $extension = self::EXTENSION_BY_MIME[$mime] ?? 'bin';
+        $relativePath = $relativeDir . '/' . bin2hex(random_bytes(16)) . '.' . $extension;
+        $target = $root . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relativePath);
+        if (!rename($source, $target)) throw new \RuntimeException('Unable to store downloaded media');
+
+        return new StoredMedia($relativePath, $this->displayName($displayName ?: 'media.' . $extension), $mime, $size);
+    }
+
     private function root(): string
     {
         $root = $this->storageRoot ?: (getenv('MEDIA_STORAGE_PATH') ?: dirname(__DIR__, 2) . '/storage/media');
