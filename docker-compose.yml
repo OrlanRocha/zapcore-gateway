@@ -1,22 +1,35 @@
-version: '3.8'
-
 services:
   php-app:
     image: php:8.2-apache
-    container_name: zapcore_php
-    ports:
-      - "8080:80"
+    restart: always
+    ports: ["8080:80"]
     volumes:
       - ./backend-php:/var/www/html
       - ./php.ini:/usr/local/etc/php/php.ini
       - ./VERSION:/app-version/VERSION:ro
     environment:
-      - APACHE_DOCUMENT_ROOT=/var/www/html/public
-      - APP_VERSION_FILE=/app-version/VERSION
+      APACHE_DOCUMENT_ROOT: /var/www/html/public
+      APP_VERSION_FILE: /app-version/VERSION
+      APP_ENV: production
+      APP_URL: ${APP_URL:?APP_URL is required}
+      APP_KEY_FILE: /run/secrets/app_key
+      INTERNAL_SECRET_FILE: /run/secrets/internal_secret
+      WORKER_URL: http://baileys-worker:3333
+      WORKER_SECRET_FILE: /run/secrets/worker_secret
+      MEDIA_STORAGE_PATH: /var/www/html/storage/media
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_DATABASE: ${MYSQL_DATABASE:?MYSQL_DATABASE is required}
+      DB_USERNAME: ${MYSQL_USER:?MYSQL_USER is required}
+      DB_PASSWORD_FILE: /run/secrets/mysql_app_password
+    secrets:
+      - { source: app_key, target: app_key, mode: 0440 }
+      - { source: internal_secret, target: internal_secret, mode: 0440 }
+      - { source: worker_secret, target: worker_secret, mode: 0440 }
+      - { source: mysql_app_password, target: mysql_app_password, mode: 0440 }
     depends_on:
-      - mysql
-    networks:
-      - zapcore_network
+      mysql: { condition: service_healthy }
+    networks: [ingress, application, data]
     command: >
       bash -c "
       apt-get update
@@ -30,77 +43,117 @@ services:
 
   mysql:
     image: mysql:8.0
-    container_name: zapcore_mysql
     restart: always
     environment:
-      MYSQL_DATABASE: zapcore_gateway
-      MYSQL_USER: zapcore
-      MYSQL_PASSWORD: zapcore_pass
-      MYSQL_ROOT_PASSWORD: root_pass
-    ports:
-      - "3306:3306"
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?MYSQL_DATABASE is required}
+      MYSQL_USER: ${MYSQL_USER:?MYSQL_USER is required}
+      MYSQL_PASSWORD_FILE: /run/secrets/mysql_app_password
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
+    secrets:
+      - { source: mysql_app_password, target: mysql_app_password, mode: 0440 }
+      - { source: mysql_root_password, target: mysql_root_password, mode: 0440 }
     volumes:
       - zapcore_db_data:/var/lib/mysql
-      - ./backend-php/database/schema.sql:/docker-entrypoint-initdb.d/1_schema.sql
-      - ./backend-php/database/seed.sql:/docker-entrypoint-initdb.d/2_seed.sql
-      - ./backend-php/database/first_login_setup.sql:/docker-entrypoint-initdb.d/3_first_login_setup.sql
-      - ./backend-php/database/chat_type_migration.sql:/docker-entrypoint-initdb.d/4_chat_type_migration.sql
-      - ./backend-php/database/performance_indexes.sql:/docker-entrypoint-initdb.d/5_performance_indexes.sql
-      - ./backend-php/database/storage_retention_migration.sql:/docker-entrypoint-initdb.d/6_storage_retention_migration.sql
-    networks:
-      - zapcore_network
+      - ./backend-php/database/schema.sql:/docker-entrypoint-initdb.d/1_schema.sql:ro
+      - ./backend-php/database/seed.sql:/docker-entrypoint-initdb.d/2_seed.sql:ro
+      - ./backend-php/database/first_login_setup.sql:/docker-entrypoint-initdb.d/3_first_login_setup.sql:ro
+      - ./backend-php/database/chat_type_migration.sql:/docker-entrypoint-initdb.d/4_chat_type_migration.sql:ro
+      - ./backend-php/database/performance_indexes.sql:/docker-entrypoint-initdb.d/5_performance_indexes.sql:ro
+      - ./backend-php/database/storage_retention_migration.sql:/docker-entrypoint-initdb.d/6_storage_retention_migration.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks: [data]
 
   baileys-worker:
-    build:
-      context: ./worker-baileys
-      dockerfile: Dockerfile
-    container_name: zapcore_worker
+    build: { context: ./worker-baileys, dockerfile: Dockerfile }
     restart: always
-    ports:
-      - "3333:3333"
+    expose: [3333]
     volumes:
       - ./worker-baileys:/app
       - ./backend-php/storage/media:/app/storage/media
       - /app/node_modules
-    depends_on:
-      - mysql
-      - php-app
     environment:
-      - MEDIA_STORAGE_PATH=/app/storage/media
-    networks:
-      - zapcore_network
+      NODE_ENV: production
+      WORKER_HOST: 0.0.0.0
+      WORKER_PORT: "3333"
+      WORKER_SECRET_FILE: /run/secrets/worker_secret
+      PHP_API_URL: http://php-app:80
+      PHP_INTERNAL_SECRET_FILE: /run/secrets/internal_secret
+      APP_KEY_FILE: /run/secrets/app_key
+      MEDIA_STORAGE_PATH: /app/storage/media
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_DATABASE: ${MYSQL_DATABASE:?MYSQL_DATABASE is required}
+      DB_USERNAME: ${MYSQL_USER:?MYSQL_USER is required}
+      DB_PASSWORD_FILE: /run/secrets/mysql_app_password
+    secrets:
+      - { source: app_key, target: app_key, mode: 0440 }
+      - { source: internal_secret, target: internal_secret, mode: 0440 }
+      - { source: worker_secret, target: worker_secret, mode: 0440 }
+      - { source: mysql_app_password, target: mysql_app_password, mode: 0440 }
+    depends_on:
+      mysql: { condition: service_healthy }
+      php-app: { condition: service_started }
+    networks: [application, data]
     command: npm run dev
 
   storage-scheduler:
     image: php:8.2-cli
-    container_name: zapcore_storage_scheduler
     restart: always
     working_dir: /var/www/html
     volumes:
       - ./backend-php:/var/www/html
       - ./backend-php/storage/media:/var/www/html/storage/media
+    environment:
+      APP_ENV: production
+      MEDIA_STORAGE_PATH: /var/www/html/storage/media
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_DATABASE: ${MYSQL_DATABASE:?MYSQL_DATABASE is required}
+      DB_USERNAME: ${MYSQL_USER:?MYSQL_USER is required}
+      DB_PASSWORD_FILE: /run/secrets/mysql_app_password
+    secrets:
+      - { source: mysql_app_password, target: mysql_app_password, mode: 0440 }
     depends_on:
-      - mysql
-    networks:
-      - zapcore_network
+      mysql: { condition: service_healthy }
+    networks: [application, data]
     command: >
-      bash -c "
-      docker-php-ext-install pdo pdo_mysql
-      && while true; do php bin/storage-retention.php; sleep 300; done
-      "
+      bash -c "docker-php-ext-install pdo pdo_mysql
+      && while true; do php bin/storage-retention.php; sleep 300; done"
 
   redis:
     image: redis:7-alpine
-    container_name: zapcore_redis
     restart: always
-    ports:
-      - "6379:6379"
-    networks:
-      - zapcore_network
+    profiles: [redis]
+    entrypoint: ["/usr/local/bin/zapcore-redis-entrypoint.sh"]
+    volumes:
+      - ./docker/redis-entrypoint.sh:/usr/local/bin/zapcore-redis-entrypoint.sh:ro
+    secrets:
+      - { source: redis_acl, target: redis_acl, mode: 0440 }
+    networks: [data]
 
 volumes:
   zapcore_db_data:
 
+secrets:
+  app_key:
+    file: ${APP_KEY_SECRET_FILE:?APP_KEY_SECRET_FILE is required}
+  internal_secret:
+    file: ${INTERNAL_SECRET_FILE:?INTERNAL_SECRET_FILE is required}
+  worker_secret:
+    file: ${WORKER_SECRET_FILE:?WORKER_SECRET_FILE is required}
+  mysql_app_password:
+    file: ${MYSQL_APP_PASSWORD_FILE:?MYSQL_APP_PASSWORD_FILE is required}
+  mysql_root_password:
+    file: ${MYSQL_ROOT_PASSWORD_FILE:?MYSQL_ROOT_PASSWORD_FILE is required}
+  redis_acl:
+    file: ${REDIS_ACL_FILE:-./secrets/examples/redis-users.acl.example}
+
 networks:
-  zapcore_network:
-    driver: bridge
+  ingress: { driver: bridge }
+  application: { driver: bridge }
+  data: { driver: bridge, internal: true }

@@ -51,6 +51,8 @@ test('lockfile resolves only patched dependency versions', () => {
 
   assertEveryLockedVersion(packages, 'follow-redirects', '1.16.1')
   assertEveryLockedVersion(packages, 'music-metadata', '11.16.1')
+  assertEveryLockedVersion(packages, 'body-parser', '1.20.9')
+  assertEveryLockedVersion(packages, 'yaml', '2.8.3')
 })
 
 test('Docker build uses the reproducible npm installation command', () => {

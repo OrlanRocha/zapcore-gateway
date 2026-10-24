@@ -47,8 +47,10 @@ que afete instalacao, operacao, seguranca, API ou comportamento do sistema.
 ## Instalar com Docker
 
 ```bash
-cp backend-php/.env.example backend-php/.env
-cp worker-baileys/.env.example worker-baileys/.env
+cp .env.example .env
+mkdir -p secrets
+cp secrets/examples/*.example secrets/
+# Renomeie os arquivos sem .example, substitua todos os placeholders e use chmod 600.
 docker compose up -d --build
 ```
 
@@ -57,9 +59,11 @@ O painel fica em `http://localhost:8080`.
 Servicos principais:
 
 - PHP/Apache: `8080`
-- MySQL: `3306`
-- Worker Baileys: `3333`
-- Redis opcional: `6379`
+- MySQL: somente rede Docker; acesso local opcional via `docker-compose.mysql-admin.yml`
+- Worker Baileys: `3333` somente na rede Docker
+- Redis: profile opcional `redis`, somente na rede Docker
+
+Os arquivos reais em `secrets/` não são versionados. Consulte `docs/security/E3-docker-secrets-hardening.md` antes de iniciar o Compose.
 
 ## Instalar sem Docker
 
@@ -130,30 +134,30 @@ Backend PHP:
 ```env
 APP_NAME="ZapCore Gateway"
 APP_URL=http://localhost:8080
-APP_KEY=change_me_32_chars_minimum_key_123
+APP_KEY=replace_with_invalid_placeholder
 DB_HOST=mysql
 DB_PORT=3306
 DB_DATABASE=zapcore_gateway
 DB_USERNAME=zapcore
-DB_PASSWORD=zapcore_pass
-INTERNAL_SECRET=change_internal_secret
+DB_PASSWORD=replace_with_invalid_placeholder
+INTERNAL_SECRET=replace_with_invalid_placeholder
 WORKER_URL=http://baileys-worker:3333
-WORKER_SECRET=change_worker_secret
+WORKER_SECRET=replace_with_invalid_placeholder
 ```
 
 Worker:
 
 ```env
 WORKER_PORT=3333
-WORKER_SECRET=change_worker_secret
-APP_KEY=change_me_32_chars_minimum_key_123
+WORKER_SECRET=replace_with_invalid_placeholder
+APP_KEY=replace_with_invalid_placeholder
 PHP_API_URL=http://php-app:80
-PHP_INTERNAL_SECRET=change_internal_secret
+PHP_INTERNAL_SECRET=replace_with_invalid_placeholder
 DB_HOST=mysql
 DB_PORT=3306
 DB_DATABASE=zapcore_gateway
 DB_USERNAME=zapcore
-DB_PASSWORD=zapcore_pass
+DB_PASSWORD=replace_with_invalid_placeholder
 ```
 
 Use o mesmo `APP_KEY` no backend e no worker para criptografar e ler o estado Baileys em `baileys_auth`.

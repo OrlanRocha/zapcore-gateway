@@ -23,17 +23,21 @@ Sem Docker:
 Na raiz do projeto:
 
 ```bash
-cp backend-php/.env.example backend-php/.env
-cp worker-baileys/.env.example worker-baileys/.env
+cp .env.example .env
+mkdir -p secrets
+cp secrets/examples/*.example secrets/
+# Renomeie os arquivos sem .example, substitua placeholders e aplique chmod 600.
 docker compose up -d --build
 ```
 
 Servicos:
 
 - Painel PHP: `http://localhost:8080`
-- MySQL: `localhost:3306`
-- Worker Baileys: `http://localhost:3333`
-- Redis opcional: `localhost:6379`
+- MySQL: sem porta no host por padrão
+- Worker Baileys: porta 3333 somente nas redes Docker
+- Redis: profile opcional `redis`, sem porta no host
+
+Para administração local explícita do MySQL, use `docker compose -f docker-compose.yml -f docker-compose.mysql-admin.yml up -d mysql`. O override limita a publicação a `127.0.0.1`.
 
 O MySQL importa automaticamente:
 
@@ -52,7 +56,7 @@ Crie um banco com charset `utf8mb4`:
 
 ```sql
 CREATE DATABASE zapcore_gateway CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'zapcore'@'localhost' IDENTIFIED BY 'zapcore_pass';
+CREATE USER 'zapcore'@'localhost' IDENTIFIED BY 'REPLACE_WITH_GENERATED_SECRET';
 GRANT ALL PRIVILEGES ON zapcore_gateway.* TO 'zapcore'@'localhost';
 FLUSH PRIVILEGES;
 ```
@@ -69,15 +73,15 @@ Edite `backend-php/.env`:
 
 ```env
 APP_URL=http://localhost:8080
-APP_KEY=change_me_32_chars_minimum_key_123
+APP_KEY=replace_with_invalid_placeholder
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=zapcore_gateway
 DB_USERNAME=zapcore
-DB_PASSWORD=zapcore_pass
-INTERNAL_SECRET=change_internal_secret
+DB_PASSWORD=replace_with_invalid_placeholder
+INTERNAL_SECRET=replace_with_invalid_placeholder
 WORKER_URL=http://127.0.0.1:3333
-WORKER_SECRET=change_worker_secret
+WORKER_SECRET=replace_with_invalid_placeholder
 ```
 
 O host PHP precisa das extensoes `curl` e `fileinfo`. O envio por `media_url`
@@ -150,15 +154,15 @@ Edite `worker-baileys/.env`:
 ```env
 NODE_ENV=development
 WORKER_PORT=3333
-WORKER_SECRET=change_worker_secret
-APP_KEY=change_me_32_chars_minimum_key_123
+WORKER_SECRET=replace_with_invalid_placeholder
+APP_KEY=replace_with_invalid_placeholder
 PHP_API_URL=http://127.0.0.1:8080
-PHP_INTERNAL_SECRET=change_internal_secret
+PHP_INTERNAL_SECRET=replace_with_invalid_placeholder
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=zapcore_gateway
 DB_USERNAME=zapcore
-DB_PASSWORD=zapcore_pass
+DB_PASSWORD=replace_with_invalid_placeholder
 ```
 
 Use o mesmo `APP_KEY`, `WORKER_SECRET` e `INTERNAL_SECRET` do backend.

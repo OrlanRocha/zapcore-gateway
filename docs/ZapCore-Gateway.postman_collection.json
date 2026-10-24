@@ -62,11 +62,11 @@
     },
     {
       "key": "worker_secret",
-      "value": "change_worker_secret"
+      "value": ""
     },
     {
       "key": "internal_secret",
-      "value": "change_internal_secret"
+      "value": ""
     }
   ],
   "item": [

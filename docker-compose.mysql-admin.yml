@@ -1,0 +1,4 @@
+services:
+  mysql:
+    ports:
+      - "127.0.0.1:${MYSQL_ADMIN_PORT:-3306}:3306"

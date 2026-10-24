@@ -359,7 +359,7 @@ GET /api/webhook-logs
 Estas rotas sao chamadas pelo worker e exigem o header:
 
 ```http
-Internal-Secret: change_internal_secret
+Internal-Secret: <generated-internal-secret>
 ```
 
 Rotas:
@@ -375,7 +375,7 @@ Rotas:
 Estas rotas sao chamadas pelo PHP e exigem o header:
 
 ```http
-Worker-Secret: change_worker_secret
+Worker-Secret: <generated-worker-secret>
 ```
 
 ### Conectar por QR
