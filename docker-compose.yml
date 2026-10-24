@@ -130,7 +130,7 @@ services:
     image: redis:7-alpine
     restart: always
     profiles: [redis]
-    entrypoint: ["/usr/local/bin/zapcore-redis-entrypoint.sh"]
+    entrypoint: ["/bin/sh", "/usr/local/bin/zapcore-redis-entrypoint.sh"]
     volumes:
       - ./docker/redis-entrypoint.sh:/usr/local/bin/zapcore-redis-entrypoint.sh:ro
     secrets:

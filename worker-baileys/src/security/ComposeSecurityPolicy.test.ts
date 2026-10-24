@@ -108,7 +108,7 @@ test('redis is optional and requires its read-only ACL secret', () => {
   const redis = compose().services.redis
 
   assert.deepEqual(redis.profiles, ['redis'])
-  assert.deepEqual(redis.entrypoint, ['/usr/local/bin/zapcore-redis-entrypoint.sh'])
+  assert.deepEqual(redis.entrypoint, ['/bin/sh', '/usr/local/bin/zapcore-redis-entrypoint.sh'])
   assert.ok(redis.volumes?.includes('./docker/redis-entrypoint.sh:/usr/local/bin/zapcore-redis-entrypoint.sh:ro'))
   const secret = redis.secrets?.find((entry) => entry.source === 'redis_acl')
   assert.equal(secret?.target, 'redis_acl')
