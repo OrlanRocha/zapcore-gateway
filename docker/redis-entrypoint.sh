@@ -12,4 +12,4 @@ fi
 cp "$source_acl" "$runtime_acl"
 chown redis:redis "$runtime_acl"
 chmod 0400 "$runtime_acl"
-exec su-exec redis redis-server --aclfile "$runtime_acl"
+exec /usr/local/bin/docker-entrypoint.sh redis-server --aclfile "$runtime_acl"

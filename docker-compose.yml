@@ -120,7 +120,7 @@ services:
       mysql: { condition: service_healthy }
     networks: [application, data]
     healthcheck:
-      test: ["CMD-SHELL", "php -m | grep -qi pdo_mysql && kill -0 1"]
+      test: ["CMD-SHELL", "php -m | grep -qi pdo_mysql && test -f /tmp/storage-scheduler-healthy && kill -0 1"]
       interval: 30s
       timeout: 5s
       retries: 3

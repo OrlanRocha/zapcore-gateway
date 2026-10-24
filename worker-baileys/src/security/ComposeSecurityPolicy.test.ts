@@ -19,6 +19,7 @@ interface ComposeService {
   container_name?: string
   environment?: Record<string, unknown>
   entrypoint?: string[]
+  healthcheck?: { test?: string | string[] }
   expose?: number[]
   networks?: string[] | Record<string, unknown>
   ports?: string[]
@@ -118,6 +119,11 @@ test('redis is optional and requires its read-only ACL secret', () => {
   assert.match(entrypoint, /^cp /m)
   assert.match(entrypoint, /^chown redis:redis /m)
   assert.match(entrypoint, /^chmod 0400 /m)
+  assert.doesNotMatch(entrypoint, /su-exec/)
+  assert.match(entrypoint, /docker-entrypoint\.sh redis-server --aclfile/)
+
+  const schedulerHealth = String(compose().services['storage-scheduler'].healthcheck?.test || '')
+  assert.match(schedulerHealth, /storage-scheduler-healthy/)
 })
 
 test('administrative MySQL override binds only to loopback', () => {
