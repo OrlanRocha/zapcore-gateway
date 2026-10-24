@@ -102,6 +102,14 @@ for file in /run/zapcore-secrets/*; do
 done
 '
 
+media_probe="e3-media-$project"
+cache_probe="e3-cache-$project"
+docker compose -p "$project" exec -T php-app sh -c "printf media-ok > /var/www/html/storage/media/$media_probe && printf cache-ok > /var/www/html/storage/cache/$cache_probe"
+docker compose -p "$project" exec -T baileys-worker sh -c "grep -qx media-ok /app/storage/media/$media_probe"
+docker compose -p "$project" up -d --wait --force-recreate php-app
+docker compose -p "$project" exec -T php-app sh -c "grep -qx media-ok /var/www/html/storage/media/$media_probe && grep -qx cache-ok /var/www/html/storage/cache/$cache_probe"
+rm -f "$repo_root/backend-php/storage/media/$media_probe" "$repo_root/backend-php/storage/cache/$cache_probe"
+
 docker compose -p "$project" exec -T php-app php -r '
 $password = trim(file_get_contents(getenv("DB_PASSWORD_FILE")));
 $pdo = new PDO("mysql:host=mysql;dbname=" . getenv("DB_DATABASE"), getenv("DB_USERNAME"), $password);

@@ -6,6 +6,9 @@ services:
     volumes:
       - ./php.ini:/usr/local/etc/php/php.ini
       - ./VERSION:/app-version/VERSION:ro
+      - ./backend-php/storage/media:/var/www/html/storage/media
+      - ./backend-php/storage/cache:/var/www/html/storage/cache
+      - ./backend-php/storage/logs:/var/www/html/storage/logs
     environment:
       APACHE_DOCUMENT_ROOT: /var/www/html/public
       APP_VERSION_FILE: /app-version/VERSION

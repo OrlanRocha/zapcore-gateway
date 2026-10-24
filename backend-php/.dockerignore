@@ -4,4 +4,6 @@
 .phpunit.cache
 tests
 storage/media/*
+storage/cache/*
+storage/logs/*
 vendor

@@ -55,6 +55,10 @@ test('base compose keeps database services private and preserves persistence', (
   assert.deepEqual(worker.expose, [3333])
   assert.ok(document.volumes.zapcore_db_data !== undefined)
   assert.ok(mysql.volumes?.includes('zapcore_db_data:/var/lib/mysql'))
+  assert.ok(document.services['php-app'].volumes?.includes('./backend-php/storage/media:/var/www/html/storage/media'))
+  assert.ok(document.services['php-app'].volumes?.includes('./backend-php/storage/cache:/var/www/html/storage/cache'))
+  assert.ok(document.services['php-app'].volumes?.includes('./backend-php/storage/logs:/var/www/html/storage/logs'))
+  assert.ok(worker.volumes?.includes('./backend-php/storage/media:/app/storage/media'))
   for (const service of Object.values(document.services)) {
     assert.equal(service.container_name, undefined)
   }
@@ -136,6 +140,7 @@ test('secret files are ignored and examples are intentionally unusable', () => {
   const rootExample = readFileSync(join(repositoryRoot, '.env.example'), 'utf8')
   const backendExample = readFileSync(join(repositoryRoot, 'backend-php', '.env.example'), 'utf8')
   const workerExample = readFileSync(join(repositoryRoot, 'worker-baileys', '.env.example'), 'utf8')
+  const backendDockerignore = readFileSync(join(repositoryRoot, 'backend-php', '.dockerignore'), 'utf8')
 
   assert.match(gitignore, /^secrets\/\*$/m)
   assert.match(gitignore, /^!secrets\/examples\/$/m)
@@ -148,4 +153,7 @@ test('secret files are ignored and examples are intentionally unusable', () => {
     assert.equal(values.includes(unsafe), false)
   }
   assert.match(`${backendExample}\n${workerExample}`, /replace_with_invalid_placeholder/)
+  assert.match(backendDockerignore, /^storage\/media\/\*$/m)
+  assert.match(backendDockerignore, /^storage\/cache\/\*$/m)
+  assert.match(backendDockerignore, /^storage\/logs\/\*$/m)
 })

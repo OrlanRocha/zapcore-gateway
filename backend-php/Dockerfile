@@ -20,6 +20,7 @@ COPY --from=vendor /app/vendor /var/www/html/vendor
 COPY . /var/www/html
 COPY docker/php-secrets-entrypoint.sh /usr/local/bin/zapcore-php-entrypoint
 RUN chmod 0755 /usr/local/bin/zapcore-php-entrypoint \
+    && mkdir -p /var/www/html/storage/media /var/www/html/storage/cache /var/www/html/storage/logs \
     && chown -R www-data:www-data /var/www/html/storage
 
 ENTRYPOINT ["/usr/local/bin/zapcore-php-entrypoint"]
