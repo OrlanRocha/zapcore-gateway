@@ -7,4 +7,6 @@ RUN npm ci
 
 COPY . .
 
-CMD ["npm", "run", "dev"]
+RUN npm run build && npm prune --omit=dev
+
+CMD ["npm", "start"]

@@ -14,6 +14,7 @@ interface ComposeSecretMount {
 }
 
 interface ComposeService {
+  build?: string | { context?: string; dockerfile?: string }
   command?: string | string[]
   container_name?: string
   environment?: Record<string, unknown>
@@ -87,6 +88,20 @@ test('compose uses file secrets and contains no inline passwords', () => {
       assert.equal(unsafeValues.has(String(value)), false)
     }
   }
+})
+
+test('PHP services use prebuilt images with database extensions', () => {
+  const document = compose()
+  assert.deepEqual(document.services['php-app'].build, {
+    context: './backend-php',
+    dockerfile: 'Dockerfile',
+  })
+  assert.deepEqual(document.services['storage-scheduler'].build, {
+    context: './backend-php',
+    dockerfile: 'Dockerfile.scheduler',
+  })
+  assert.doesNotMatch(String(document.services['php-app'].command || ''), /docker-php-ext-install/)
+  assert.doesNotMatch(String(document.services['storage-scheduler'].command || ''), /docker-php-ext-install/)
 })
 
 test('redis is optional and requires its read-only ACL secret', () => {

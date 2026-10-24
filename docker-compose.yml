@@ -1,10 +1,9 @@
 services:
   php-app:
-    image: php:8.2-apache
+    build: { context: ./backend-php, dockerfile: Dockerfile }
     restart: always
     ports: ["8080:80"]
     volumes:
-      - ./backend-php:/var/www/html
       - ./php.ini:/usr/local/etc/php/php.ini
       - ./VERSION:/app-version/VERSION:ro
     environment:
@@ -12,16 +11,16 @@ services:
       APP_VERSION_FILE: /app-version/VERSION
       APP_ENV: production
       APP_URL: ${APP_URL:?APP_URL is required}
-      APP_KEY_FILE: /run/secrets/app_key
-      INTERNAL_SECRET_FILE: /run/secrets/internal_secret
+      APP_KEY_FILE: /run/zapcore-secrets/app_key
+      INTERNAL_SECRET_FILE: /run/zapcore-secrets/internal_secret
       WORKER_URL: http://baileys-worker:3333
-      WORKER_SECRET_FILE: /run/secrets/worker_secret
+      WORKER_SECRET_FILE: /run/zapcore-secrets/worker_secret
       MEDIA_STORAGE_PATH: /var/www/html/storage/media
       DB_HOST: mysql
       DB_PORT: "3306"
       DB_DATABASE: ${MYSQL_DATABASE:?MYSQL_DATABASE is required}
       DB_USERNAME: ${MYSQL_USER:?MYSQL_USER is required}
-      DB_PASSWORD_FILE: /run/secrets/mysql_app_password
+      DB_PASSWORD_FILE: /run/zapcore-secrets/mysql_app_password
     secrets:
       - { source: app_key, target: app_key, mode: 0440 }
       - { source: internal_secret, target: internal_secret, mode: 0440 }
@@ -30,16 +29,12 @@ services:
     depends_on:
       mysql: { condition: service_healthy }
     networks: [ingress, application, data]
-    command: >
-      bash -c "
-      apt-get update
-      && apt-get install -y libcurl4-openssl-dev
-      && sed -ri -e 's!/var/www/html!$${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-      && sed -ri -e 's!/var/www/!$${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
-      && a2enmod rewrite
-      && docker-php-ext-install pdo pdo_mysql curl
-      && apache2-foreground
-      "
+    healthcheck:
+      test: ["CMD-SHELL", "php -m | grep -qi pdo_mysql && php -r '$$s = fsockopen(\"127.0.0.1\", 80); fclose($$s);'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
 
   mysql:
     image: mysql:8.0
@@ -73,9 +68,7 @@ services:
     restart: always
     expose: [3333]
     volumes:
-      - ./worker-baileys:/app
       - ./backend-php/storage/media:/app/storage/media
-      - /app/node_modules
     environment:
       NODE_ENV: production
       WORKER_HOST: 0.0.0.0
@@ -99,14 +92,19 @@ services:
       mysql: { condition: service_healthy }
       php-app: { condition: service_started }
     networks: [application, data]
-    command: npm run dev
+    command: npm start
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3333/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
 
   storage-scheduler:
-    image: php:8.2-cli
+    build: { context: ./backend-php, dockerfile: Dockerfile.scheduler }
     restart: always
     working_dir: /var/www/html
     volumes:
-      - ./backend-php:/var/www/html
       - ./backend-php/storage/media:/var/www/html/storage/media
     environment:
       APP_ENV: production
@@ -121,9 +119,12 @@ services:
     depends_on:
       mysql: { condition: service_healthy }
     networks: [application, data]
-    command: >
-      bash -c "docker-php-ext-install pdo pdo_mysql
-      && while true; do php bin/storage-retention.php; sleep 300; done"
+    healthcheck:
+      test: ["CMD-SHELL", "php -m | grep -qi pdo_mysql && kill -0 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
   redis:
     image: redis:7-alpine
@@ -135,6 +136,12 @@ services:
     secrets:
       - { source: redis_acl, target: redis_acl, mode: 0440 }
     networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=$$(sed -n 's/^user zapcore on >\\([^ ]*\\).*/\\1/p' /run/secrets/redis_acl) redis-cli --user zapcore ping | grep -qx PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
 volumes:
   zapcore_db_data:

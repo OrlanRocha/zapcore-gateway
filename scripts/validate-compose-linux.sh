@@ -7,7 +7,7 @@ secret_dir="$(mktemp -d)"
 rendered="$(mktemp)"
 
 cleanup() {
-  docker compose -p "$project" --profile redis down --remove-orphans || true
+  docker compose -p "$project" --profile redis down -v --remove-orphans || true
   rm -rf "$secret_dir"
   rm -f "$rendered"
 }
@@ -66,7 +66,35 @@ if (!compose.networks.data.internal) throw new Error('data network must be inter
 NODE
 
 docker compose -p "$project" build
+
+empty_secret="$secret_dir/empty"
+: >"$empty_secret"
+chmod 600 "$empty_secret"
+if APP_KEY_SECRET_FILE="$empty_secret" docker compose -p "$project" run --rm --no-deps php-app php -v >/dev/null 2>&1; then
+  echo 'PHP unexpectedly accepted an empty mounted secret.' >&2
+  exit 1
+fi
+if APP_KEY_SECRET_FILE="$secret_dir/missing" docker compose -p "$project" run --rm --no-deps php-app php -v >/dev/null 2>&1; then
+  echo 'PHP unexpectedly accepted a missing mounted secret.' >&2
+  exit 1
+fi
+
 docker compose -p "$project" up -d --wait mysql php-app baileys-worker storage-scheduler
+
+for service in mysql php-app baileys-worker storage-scheduler; do
+  test "$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}' "$project-$service-1")" = healthy
+done
+
+volume_name="${project}_zapcore_db_data"
+test "$(docker volume inspect -f '{{index .Labels "com.docker.compose.volume"}}' "$volume_name")" = zapcore_db_data
+test "$(docker volume inspect -f '{{index .Labels "com.docker.compose.project"}}' "$volume_name")" = "$project"
+
+docker compose -p "$project" exec -T php-app sh -c '
+for file in /run/zapcore-secrets/*; do
+  test "$(stat -c %a "$file")" = 440
+  su -s /bin/sh www-data -c "test -r $file"
+done
+'
 
 docker compose -p "$project" exec -T php-app php -r '
 $password = trim(file_get_contents(getenv("DB_PASSWORD_FILE")));
@@ -92,17 +120,34 @@ const mysql = require('mysql2/promise')
 })().catch((error) => { console.error(error.message); process.exit(1) })
 NODE
 
-docker compose -p "$project" restart mysql
-docker compose -p "$project" up -d --wait mysql
+docker compose -p "$project" up -d --wait --force-recreate mysql
 docker compose -p "$project" exec -T mysql sh -c '
 MYSQL_PWD="$(cat /run/secrets/mysql_app_password)" mysql -u"$MYSQL_USER" "$MYSQL_DATABASE" -Nse "SELECT COUNT(*) FROM e3_ci_probe WHERE id=1" | grep -qx 1
 '
 
-docker compose -p "$project" --profile redis up -d redis
+docker compose -p "$project" --profile redis up -d --wait redis
 if docker compose -p "$project" exec -T redis redis-cli ping 2>/dev/null | grep -qx PONG; then
   echo 'Redis accepted an unauthenticated command' >&2
   exit 1
 fi
+
+docker compose -p "$project" exec -T redis sh -c '
+password="$(sed -n "s/^user zapcore on >\\([^ ]*\\).*/\\1/p" /run/secrets/redis_acl)"
+test -n "$password"
+REDISCLI_AUTH="$password" redis-cli --user zapcore ping | grep -qx PONG
+'
+
+docker compose -p "$project" exec -T baileys-worker node - <<'NODE'
+const controller = new AbortController()
+const timeout = setTimeout(() => controller.abort(), 15000)
+fetch('https://web.whatsapp.com', { signal: controller.signal })
+  .then((response) => {
+    clearTimeout(timeout)
+    if (response.status < 100) process.exit(1)
+    console.log('baileys-egress-ok')
+  })
+  .catch((error) => { console.error(error.message); process.exit(1) })
+NODE
 
 if docker compose -p "$project" port mysql 3306 2>/dev/null | grep -q .; then
   echo 'MySQL unexpectedly publishes a host port' >&2
@@ -113,4 +158,4 @@ if docker compose -p "$project" --profile redis port redis 6379 2>/dev/null | gr
   exit 1
 fi
 
-echo 'E3 isolated Compose validation passed; the dedicated test volume is intentionally retained.'
+echo 'E3 isolated Compose validation passed; all test resources will be removed.'

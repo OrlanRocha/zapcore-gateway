@@ -59,6 +59,21 @@ final class EnvironmentTest extends TestCase
         }
     }
 
+    public function test_rejects_symbolic_link_secret_files(): void
+    {
+        if (PHP_OS_FAMILY === 'Windows') {
+            self::markTestSkipped('Windows test environments do not reliably permit symlink creation.');
+        }
+
+        $target = $this->root . '/target';
+        $link = $this->root . '/link';
+        file_put_contents($target, "file-secret-value-1234567890\n");
+        symlink($target, $link);
+
+        $this->expectException(RuntimeException::class);
+        Environment::secret('DB_PASSWORD', ['DB_PASSWORD_FILE' => $link]);
+    }
+
     public function test_requires_non_secret_settings_without_unsafe_defaults(): void
     {
         self::assertSame('mysql', Environment::required('DB_HOST', ['DB_HOST' => 'mysql']));

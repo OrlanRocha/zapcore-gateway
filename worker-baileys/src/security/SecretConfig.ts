@@ -1,4 +1,4 @@
-import { accessSync, constants, readFileSync, statSync } from 'node:fs'
+import { accessSync, constants, lstatSync, readFileSync } from 'node:fs'
 
 type Environment = Record<string, string | undefined>
 
@@ -25,7 +25,8 @@ export function readSecret(name: string, environment: Environment = process.env)
   if (file) {
     try {
       accessSync(file, constants.R_OK)
-      if (!statSync(file).isFile()) throw new Error('not a regular file')
+      const stat = lstatSync(file)
+      if (stat.isSymbolicLink() || !stat.isFile()) throw new Error('not a regular file')
       value = readFileSync(file, 'utf8').trim()
     } catch {
       throw new Error(`Unreadable secret file for ${name}`)

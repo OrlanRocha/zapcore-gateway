@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
@@ -63,6 +63,24 @@ test('rejects an unreadable secret file when the platform enforces permissions',
     assert.throws(() => readSecret('WORKER_SECRET', { WORKER_SECRET_FILE: secretFile }))
   } finally {
     chmodSync(secretFile, 0o600)
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('rejects symbolic link secret files', (context) => {
+  if (process.platform === 'win32') {
+    context.skip('Windows test environments do not reliably permit symlink creation')
+    return
+  }
+
+  const root = mkdtempSync(join(tmpdir(), 'zapcore-secrets-'))
+  try {
+    const target = join(root, 'target')
+    const link = join(root, 'link')
+    writeFileSync(target, 'file-secret-value-1234567890\n', { mode: 0o600 })
+    symlinkSync(target, link)
+    assert.throws(() => readSecret('WORKER_SECRET', { WORKER_SECRET_FILE: link }))
+  } finally {
     rmSync(root, { recursive: true, force: true })
   }
 })

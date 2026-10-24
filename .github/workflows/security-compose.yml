@@ -26,6 +26,11 @@ jobs:
           node-version: '20'
           cache: npm
           cache-dependency-path: worker-baileys/package-lock.json
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: curl, pdo_mysql
+          coverage: none
       - name: Install worker dependencies
         working-directory: worker-baileys
         run: npm ci
@@ -35,5 +40,11 @@ jobs:
       - name: Build TypeScript
         working-directory: worker-baileys
         run: npm run build
+      - name: Install PHP dependencies
+        working-directory: backend-php
+        run: composer install --no-interaction --no-progress --prefer-dist
+      - name: Run PHP regression tests
+        working-directory: backend-php
+        run: composer test
       - name: Validate isolated Compose runtime
         run: bash scripts/validate-compose-linux.sh

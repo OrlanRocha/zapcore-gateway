@@ -36,7 +36,7 @@ final class Environment
         }
 
         if ($file !== '') {
-            if (!is_file($file) || !is_readable($file)) {
+            if (is_link($file) || !is_file($file) || !is_readable($file)) {
                 throw new \RuntimeException("Unreadable secret file for {$name}");
             }
             $contents = file_get_contents($file);

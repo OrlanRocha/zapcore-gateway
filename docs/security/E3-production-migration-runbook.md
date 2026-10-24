@@ -27,11 +27,12 @@ Stop before changing anything if the active Compose project, MySQL volume, backu
 
 ## 3. Prepare secret files
 
-1. Generate independent high-entropy values for app key, internal secret, worker secret, MySQL application password, MySQL root password, and Redis ACL credentials if Redis will be enabled.
-2. Store each value in its own root-owned file outside Git; apply mode `0600` and restrict the parent directory.
-3. Create the deployment `.env` with only non-secret values and absolute secret-file paths.
-4. Run `docker compose config` and inspect the rendered services, networks, volumes, secrets, and host bindings. Do not print secret files.
-5. Verify the effective volume name matches the inventory exactly. Stop on any mismatch.
+1. Archive legacy `backend-php/.env` and `worker-baileys/.env` files outside the deployment tree, then remove direct secret assignments from the deployment copies. Abort if any direct/`*_FILE` pair coexists for `APP_KEY`, `INTERNAL_SECRET`, `WORKER_SECRET`, `PHP_INTERNAL_SECRET`, or `DB_PASSWORD`.
+2. Generate independent high-entropy values for app key, internal secret, worker secret, MySQL application password, MySQL root password, and Redis ACL credentials if Redis will be enabled.
+3. Store each value in its own root-owned file outside Git; apply mode `0600` and restrict the parent directory.
+4. Create the deployment `.env` with only non-secret values and absolute secret-file paths.
+5. Run `docker compose config` and inspect the rendered services, networks, volumes, secrets, and host bindings. Do not print secret files.
+6. Verify the effective volume name matches the inventory exactly. Stop on any mismatch.
 
 ## 4. Rotate initialized MySQL credentials
 
